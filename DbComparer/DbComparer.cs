@@ -7,21 +7,32 @@ public enum ComparerAction
     ApplyChanges,
     DoNotApplyChanges
 }
+public enum MatchesProcs
+{
+    Show,
+    Hide
+}
 public record SqlServer(string name, string connectionString);
 public class DbComparer
 {
-    public static void CompareProcs(SqlServer sourceServer, SqlServer destinationServer, string outputFolder, ComparerAction makeChange)
+    public static void CompareProcs(SqlServer sourceServer, SqlServer destinationServer, string outputFolder, ComparerAction makeChange,MatchesProcs visibility)
     {
         Directory.CreateDirectory(outputFolder);
 
-        //List<string> procedures = new() { "temporary.test1", "temporary.test2" };
+        //List<string> procedures = new() { "temporary.test1", "temporary.test2" , "adminapp.spAvgRequestsCompletedPerHourPerConcierge" };
         List<string> procedures = ProcedureFetcher.GetProcedureNames(sourceServer.connectionString);
 
         List<ProcedureResult> results = new();
 
         foreach (var proc in procedures)
         {
+            string[] parts = proc.Split('.');
+            string schema = parts.Length > 1 ? parts[0] : "dbo"; // fallback if no dot
+            string safeSchema = MakeSafe(schema);
             string safeName = MakeSafe(proc);
+
+            string schemaFolder = Path.Combine(outputFolder, safeSchema);
+            Directory.CreateDirectory(schemaFolder);
 
             (string sourceBody, string destinationBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString, destinationServer.connectionString, proc);
             bool areEqual = ProcedureComparer.AreBodiesEqual(sourceBody, destinationBody);
@@ -30,14 +41,17 @@ public class DbComparer
             string destinationFile = $"{safeName}_Destination.html";
             string newFile = $"{safeName}_New.html";
 
-            string sourcePath = Path.Combine(outputFolder, sourceFile);
-            string destinationPath = Path.Combine(outputFolder, destinationFile);
+            string returnPage = Path.Combine("..","index.html");
 
-            string returnPage = "SummaryReport.html";
-
-            HtmlReportWriter.WriteProcedureBodyHtml(sourcePath, $"{sourceServer.name} Procedure Body", sourceBody, returnPage);
-            HtmlReportWriter.WriteProcedureBodyHtml(destinationPath, $"{destinationServer.name} Procedure Body", destinationBody, returnPage);
-
+            bool isVisible = false;
+            if (areEqual && visibility == MatchesProcs.Show || !areEqual)
+            {
+                string sourcePath = Path.Combine(schemaFolder, sourceFile);
+                string destinationPath = Path.Combine(schemaFolder, destinationFile);
+                HtmlReportWriter.WriteProcedureBodyHtml(sourcePath, $"{sourceServer.name} Procedure Body", sourceBody, returnPage);
+                HtmlReportWriter.WriteProcedureBodyHtml(destinationPath, $"{destinationServer.name} Procedure Body", destinationBody, returnPage);
+                isVisible = true;
+            }
             string destinationNewBody = destinationBody;
             bool wasAltered = false;
 
@@ -45,7 +59,7 @@ public class DbComparer
             {
                 ProcedureUpdater.AlterProcedure(destinationServer.connectionString, sourceBody);
                 (_, destinationNewBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString,destinationServer.connectionString, proc);
-                string newPath = Path.Combine(outputFolder, newFile);
+                string newPath = Path.Combine(schemaFolder, newFile);
                 HtmlReportWriter.WriteProcedureBodyHtml(newPath, $"New {destinationServer.name} Procedure Body", destinationNewBody, returnPage);
                 wasAltered = true;
             }
@@ -54,13 +68,13 @@ public class DbComparer
             {
                 Name = proc,
                 IsEqual = areEqual,
-                SourceFile = sourceFile,
-                DestinationFile = destinationFile,
-                NewFile = wasAltered ? newFile : null
+                SourceFile = isVisible ? Path.Combine(schemaFolder, sourceFile) : null,
+                DestinationFile = isVisible ? Path.Combine(schemaFolder, destinationFile) : null,
+                NewFile = wasAltered ? Path.Combine(schemaFolder, newFile) : null
             });
         }
 
-        HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(outputFolder, "SummaryReport.html"), results);
+        HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(outputFolder, "index.html"), results);
     }
     private static string MakeSafe(string name)
     {
