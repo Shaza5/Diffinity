@@ -4,67 +4,68 @@ namespace DbComparer.HtmlHelper;
 
 public static class HtmlReportWriter
 {
-    private const string Value = @"""
+    private const string Value = @"
 <!DOCTYPE html>
 <html lang=""en"">
 <head>
     <meta charset=""UTF-8"">
     <title>Procedure Comparison Summary</title>
     <style>
-        body {{
+        body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             max-width: 1000px;
             margin: 40px auto;
             padding: 20px;
             background-color: #fff;
             color: #333;
-        }}
-        h1 {{
+        }
+        h1 {
             color: #EC317F;
             text-align: center;
             margin-bottom: 40px;
-        }}
-        table {{
+        }
+        table {
             width: 100%;
             border-collapse: collapse;
-        }}
-        th, td {{
+        }
+        th, td {
             padding: 12px 16px;
             border-bottom: 1px solid #ddd;
             text-align: left;
-        }}
-        th {{
+        }
+        th {
             background-color: #f5f5f5;
-        }}
-        .match {{
+        }
+        .match {
             color: green;
             font-weight: 600;
-        }}
-        .diff {{
+        }
+        .diff {
             color: red;
             font-weight: 600;
-        }}
-        a {{
+        }
+        a {
             color: #EC317F;
             text-decoration: none;
             font-weight: 600;
-        }}
-        a:hover {{
+        }
+        a:hover {
             text-decoration: underline;
-        }}
+        }
     </style>
 </head>
 <body>
     <h1>Procedure Comparison Summary</h1>
     <table>
         <tr>
+            <th></th>
             <th>Procedure Name</th>
             <th>Status</th>
             <th>{source} Original</th>
             <th>{destination} Original</th>
             <th>{destination} New</th>
         </tr>
-    """;
+    ";
 
     #region Summary Report Writer
     public static void WriteSummaryReport(SqlServer sourceServer, SqlServer destinationServer, string summaryPath, List<ProcedureResult> procedures)
@@ -72,19 +73,28 @@ public static class HtmlReportWriter
         StringBuilder html = new();
         html.Append(Value.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name));
 
+        int procNumber = 1;
         foreach (var proc in procedures)
         {
+            string sourceColumn = proc.SourceFile != null
+                ? $@"<a href=""{proc.SourceFile}"">View</a>"
+                : "—";
+            string destinationColumn = proc.DestinationFile != null
+                ? $@"<a href=""{proc.DestinationFile}"">View</a>"
+                : "—";
             string newColumn = proc.NewFile != null
                 ? $@"<a href=""{proc.NewFile}"">View</a>"
                 : "—";
             html.Append($@"
         <tr>
+            <td>{procNumber}</td>
             <td>{proc.Name}</td>
             <td>{(proc.IsEqual ? "<span class='match'>Match</span>" : "<span class='diff'>Different</span>")}</td>
-            <td><a href=""{proc.SourceFile}"">View</a></td>
-            <td><a href=""{proc.DestinationFile}"">View</a></td>
+            <td>{sourceColumn}</td>
+            <td>{destinationColumn}</td>
             <td>{newColumn}</td>
         </tr>");
+            procNumber++;
         }
         html.Append(@"
     </table>

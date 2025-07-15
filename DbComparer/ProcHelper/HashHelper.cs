@@ -6,8 +6,14 @@ public static class HashHelper
 {
     public static string ComputeHash(string input)
     {
-        if (input == null) throw new ArgumentNullException(nameof(input));
-        string normalized=input.Replace("create","CREATE").Replace("Create","CREATE");
+        if (input == null) return null;
+        string normalized=input.Replace("create","CREATE")
+                               .Replace("Create","CREATE") 
+                               .Replace("\r\n", "\n")
+                               .Replace(" ", "")                 
+                               .Replace("\t", "")                
+                               .Replace("\n", "")
+                               .Trim();                                      
 
         byte[] inputBytes = Encoding.UTF8.GetBytes(normalized);
 
