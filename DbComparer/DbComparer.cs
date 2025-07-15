@@ -2,8 +2,7 @@
 using DbComparer.ProcHelper;
 
 namespace DbComparer;
-
-public class General
+public class DbComparer
 {
     public static void ProcsAnalyzer(string outputFolder, bool makeChange)
     {
