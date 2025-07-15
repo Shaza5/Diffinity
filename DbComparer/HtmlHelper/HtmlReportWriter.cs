@@ -68,7 +68,7 @@ public static class HtmlReportWriter
     ";
 
     #region Summary Report Writer
-    public static void WriteSummaryReport(SqlServer sourceServer, SqlServer destinationServer, string summaryPath, List<ProcedureResult> procedures)
+    public static void WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<ProcedureResult> procedures, ProcsFilter filter)
     {
         StringBuilder html = new();
         html.Append(Value.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name));
@@ -85,7 +85,9 @@ public static class HtmlReportWriter
             string newColumn = proc.NewFile != null
                 ? $@"<a href=""{proc.NewFile}"">View</a>"
                 : "—";
-            html.Append($@"
+            if ((proc.IsEqual && filter == ProcsFilter.ShowUnchangedProcs) || !proc.IsEqual)
+            {
+                html.Append($@"
         <tr>
             <td>{procNumber}</td>
             <td>{proc.Name}</td>
@@ -94,7 +96,8 @@ public static class HtmlReportWriter
             <td>{destinationColumn}</td>
             <td>{newColumn}</td>
         </tr>");
-            procNumber++;
+                procNumber++;
+            }
         }
         html.Append(@"
     </table>

@@ -1,5 +1,6 @@
 ﻿using DbComparer.HtmlHelper;
 using DbComparer.ProcHelper;
+using Microsoft.Identity.Client;
 
 namespace DbComparer;
 public enum ComparerAction
@@ -7,15 +8,15 @@ public enum ComparerAction
     ApplyChanges,
     DoNotApplyChanges
 }
-public enum MatchesProcs
+public enum ProcsFilter
 {
-    Show,
-    Hide
+    ShowUnchangedProcs,
+    HideUnchangedProcs
 }
-public record SqlServer(string name, string connectionString);
+public record DbServer(string name, string connectionString);
 public class DbComparer
 {
-    public static void CompareProcs(SqlServer sourceServer, SqlServer destinationServer, string outputFolder, ComparerAction makeChange,MatchesProcs visibility)
+    public static void CompareProcs(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, ProcsFilter filter)
     {
         Directory.CreateDirectory(outputFolder);
 
@@ -32,20 +33,21 @@ public class DbComparer
             string safeName = MakeSafe(proc);
 
             string schemaFolder = Path.Combine(outputFolder, safeSchema);
-            Directory.CreateDirectory(schemaFolder);
 
             (string sourceBody, string destinationBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString, destinationServer.connectionString, proc);
             bool areEqual = ProcedureComparer.AreBodiesEqual(sourceBody, destinationBody);
-
+            string change = areEqual ? "No changes" : "Changes detected";
+            Serilog.Log.Information($"{proc}: {change}");
             string sourceFile = $"{safeName}_Source.html";
-            string destinationFile = $"{safeName}_Destination.html";
+            string destinationFile = $"{safeName}_{destinationServer.name}.html";
             string newFile = $"{safeName}_New.html";
 
-            string returnPage = Path.Combine("..","index.html");
+            string returnPage = Path.Combine("..", "index.html");
 
             bool isVisible = false;
-            if (areEqual && visibility == MatchesProcs.Show || !areEqual)
+            if ((areEqual && filter == ProcsFilter.ShowUnchangedProcs) || !areEqual)
             {
+                Directory.CreateDirectory(schemaFolder);
                 string sourcePath = Path.Combine(schemaFolder, sourceFile);
                 string destinationPath = Path.Combine(schemaFolder, destinationFile);
                 HtmlReportWriter.WriteProcedureBodyHtml(sourcePath, $"{sourceServer.name} Procedure Body", sourceBody, returnPage);
@@ -58,7 +60,7 @@ public class DbComparer
             if (!areEqual && makeChange == ComparerAction.ApplyChanges)
             {
                 ProcedureUpdater.AlterProcedure(destinationServer.connectionString, sourceBody);
-                (_, destinationNewBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString,destinationServer.connectionString, proc);
+                (_, destinationNewBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString, destinationServer.connectionString, proc);
                 string newPath = Path.Combine(schemaFolder, newFile);
                 HtmlReportWriter.WriteProcedureBodyHtml(newPath, $"New {destinationServer.name} Procedure Body", destinationNewBody, returnPage);
                 wasAltered = true;
@@ -74,7 +76,7 @@ public class DbComparer
             });
         }
 
-        HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(outputFolder, "index.html"), results);
+        HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(outputFolder, "index.html"), results, filter);
     }
     private static string MakeSafe(string name)
     {

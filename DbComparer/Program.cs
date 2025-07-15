@@ -1,11 +1,29 @@
-﻿namespace DbComparer;
+﻿using Serilog;
+using System.Diagnostics;
+
+namespace DbComparer;
 public class Program
 {
-    private const string OutputFolder = @"C:\Users\Nada\Documents\database";
+    private const string OutputFolder = @"DbComparer-output";
     static readonly string SourceConnectionString = Environment.GetEnvironmentVariable("CorewellCs");
     static readonly string DestinationConnectionString = Environment.GetEnvironmentVariable("CmhCs");
     public static void Main(string[] args)
     {
-        DbComparer.CompareProcs(new("Corewell", SourceConnectionString), new("CMH", DestinationConnectionString), OutputFolder, ComparerAction.DoNotApplyChanges,MatchesProcs.Hide);
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+
+        var sw = new Stopwatch();
+        sw.Start();
+        DbComparer.CompareProcs(
+            new DbServer("Corewell", SourceConnectionString)
+            , new DbServer("CMH", DestinationConnectionString)
+            , OutputFolder
+            , ComparerAction.DoNotApplyChanges
+            , ProcsFilter.HideUnchangedProcs
+        );
+        sw.Stop();
+        Console.WriteLine($"Elapsed time: {sw} ms");
     }
 }
