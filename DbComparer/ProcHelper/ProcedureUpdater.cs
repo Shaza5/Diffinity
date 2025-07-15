@@ -1,20 +1,19 @@
 ﻿using Dapper;
-using DbComparer.DatabaseHelper;
+using Microsoft.Data.SqlClient;
 
 namespace DbComparer.ProcHelper;
 public static class ProcedureUpdater
 {
-    public static void AlterProcedure(string procBody)
+    public static void AlterProcedure(string destinationConnectionString, string procBody)
     {
-        if (string.IsNullOrWhiteSpace(procBody))
-            throw new ArgumentException("Procedure body cannot be null or empty.", nameof(procBody));
+        if (string.IsNullOrWhiteSpace(procBody)) throw new ArgumentException("Procedure body cannot be null or empty.", nameof(procBody));
 
         string alteredBody = ReplaceCreateWithAlter(procBody);
-        DatabaseConnections.GetCmhConnection().Execute(alteredBody, commandType: System.Data.CommandType.Text);
-    }
-    private static string ReplaceCreateWithAlter(string body)
-    {
-        string alteredBody=body.Replace("CREATE", "ALTER").Replace("Create", "ALTER").Replace("create", "ALTER");
-        return alteredBody;
+        using var sourceConnection = new SqlConnection(destinationConnectionString);
+        sourceConnection.Execute(alteredBody);
+
+        #region local functions
+        string ReplaceCreateWithAlter(string body) => body.Replace("CREATE", "ALTER").Replace("Create", "ALTER").Replace("create", "ALTER");
+        #endregion
     }
 }

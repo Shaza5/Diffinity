@@ -1,15 +1,10 @@
-﻿using DbComparer;
-using System.Text;
+﻿using System.Text;
 
 namespace DbComparer.HtmlHelper;
 
 public static class HtmlReportWriter
 {
-    #region Summary Report Writer
-    public static void WriteSummaryReport(string summaryPath, List<ProcedureResult> procedures)
-    {
-        StringBuilder html = new();
-        html.Append($@"
+    private const string Value = @"""
 <!DOCTYPE html>
 <html lang=""en"">
 <head>
@@ -65,11 +60,17 @@ public static class HtmlReportWriter
         <tr>
             <th>Procedure Name</th>
             <th>Status</th>
-            <th>Corewell Original</th>
-            <th>CMH Original</th>
-            <th>CMH New</th>
+            <th>{source} Original</th>
+            <th>{destination} Original</th>
+            <th>{destination} New</th>
         </tr>
-");
+    """;
+
+    #region Summary Report Writer
+    public static void WriteSummaryReport(SqlServer sourceServer, SqlServer destinationServer, string summaryPath, List<ProcedureResult> procedures)
+    {
+        StringBuilder html = new();
+        html.Append(Value.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name));
 
         foreach (var proc in procedures)
         {
@@ -80,8 +81,8 @@ public static class HtmlReportWriter
         <tr>
             <td>{proc.Name}</td>
             <td>{(proc.IsEqual ? "<span class='match'>Match</span>" : "<span class='diff'>Different</span>")}</td>
-            <td><a href=""{proc.CorewellFile}"">View</a></td>
-            <td><a href=""{proc.CmhFile}"">View</a></td>
+            <td><a href=""{proc.SourceFile}"">View</a></td>
+            <td><a href=""{proc.DestinationFile}"">View</a></td>
             <td>{newColumn}</td>
         </tr>");
         }

@@ -2,14 +2,20 @@
 using DbComparer.ProcHelper;
 
 namespace DbComparer;
+public enum ComparerAction
+{
+    ApplyChanges,
+    DoNotApplyChanges
+}
+public record SqlServer(string name, string connectionString);
 public class DbComparer
 {
-    public static void ProcsAnalyzer(string outputFolder, bool makeChange)
+    public static void CompareProcs(SqlServer sourceServer, SqlServer destinationServer, string outputFolder, ComparerAction makeChange)
     {
         Directory.CreateDirectory(outputFolder);
 
-        List<string> procedures = new() { "temporary.test1", "temporary.test2" };
-        // Or use: ProcedureFetcher.GetProcedureNames(DatabaseConnections.GetCorewellConnection());
+        //List<string> procedures = new() { "temporary.test1", "temporary.test2" };
+        List<string> procedures = ProcedureFetcher.GetProcedureNames(sourceServer.connectionString);
 
         List<ProcedureResult> results = new();
 
@@ -17,30 +23,30 @@ public class DbComparer
         {
             string safeName = MakeSafe(proc);
 
-            (string corewellBody, string cmhOriginal) = ProcedureFetcher.GetProcedureBody(proc);
-            bool areEqual = ProcedureComparer.AreBodiesEqual(corewellBody, cmhOriginal);
+            (string sourceBody, string destinationBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString, destinationServer.connectionString, proc);
+            bool areEqual = ProcedureComparer.AreBodiesEqual(sourceBody, destinationBody);
 
-            string corewellFile = $"{safeName}_Corewell.html";
-            string cmhFile = $"{safeName}_CMH.html";
+            string sourceFile = $"{safeName}_Source.html";
+            string destinationFile = $"{safeName}_Destination.html";
             string newFile = $"{safeName}_New.html";
 
-            string corewellPath = Path.Combine(outputFolder, corewellFile);
-            string cmhPath = Path.Combine(outputFolder, cmhFile);
+            string sourcePath = Path.Combine(outputFolder, sourceFile);
+            string destinationPath = Path.Combine(outputFolder, destinationFile);
 
             string returnPage = "SummaryReport.html";
 
-            HtmlReportWriter.WriteProcedureBodyHtml(corewellPath, "Corewell Procedure Body", corewellBody, returnPage);
-            HtmlReportWriter.WriteProcedureBodyHtml(cmhPath, "CMH Original Procedure Body", cmhOriginal, returnPage);
+            HtmlReportWriter.WriteProcedureBodyHtml(sourcePath, $"{sourceServer.name} Procedure Body", sourceBody, returnPage);
+            HtmlReportWriter.WriteProcedureBodyHtml(destinationPath, $"{destinationServer.name} Procedure Body", destinationBody, returnPage);
 
-            string cmhNewBody = cmhOriginal;
+            string destinationNewBody = destinationBody;
             bool wasAltered = false;
 
-            if (!areEqual && makeChange)
+            if (!areEqual && makeChange == ComparerAction.ApplyChanges)
             {
-                ProcedureUpdater.AlterProcedure(corewellBody);
-                (_, cmhNewBody) = ProcedureFetcher.GetProcedureBody(proc);
+                ProcedureUpdater.AlterProcedure(destinationServer.connectionString, sourceBody);
+                (_, destinationNewBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString,destinationServer.connectionString, proc);
                 string newPath = Path.Combine(outputFolder, newFile);
-                HtmlReportWriter.WriteProcedureBodyHtml(newPath, "New CMH Procedure Body", cmhNewBody, returnPage);
+                HtmlReportWriter.WriteProcedureBodyHtml(newPath, $"New {destinationServer.name} Procedure Body", destinationNewBody, returnPage);
                 wasAltered = true;
             }
 
@@ -48,13 +54,13 @@ public class DbComparer
             {
                 Name = proc,
                 IsEqual = areEqual,
-                CorewellFile = corewellFile,
-                CmhFile = cmhFile,
+                SourceFile = sourceFile,
+                DestinationFile = destinationFile,
                 NewFile = wasAltered ? newFile : null
             });
         }
 
-        HtmlReportWriter.WriteSummaryReport(Path.Combine(outputFolder, "SummaryReport.html"), results);
+        HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(outputFolder, "SummaryReport.html"), results);
     }
     private static string MakeSafe(string name)
     {
@@ -70,7 +76,7 @@ public class ProcedureResult
 {
     public string Name { get; set; }
     public bool IsEqual { get; set; }
-    public string CorewellFile { get; set; }
-    public string CmhFile { get; set; }
+    public string SourceFile { get; set; }
+    public string DestinationFile { get; set; }
     public string? NewFile { get; set; } // null if not altered
 }

@@ -1,20 +1,35 @@
 ﻿using Dapper;
-using DbComparer.DatabaseHelper;
 using Microsoft.Data.SqlClient;
-using System.Data;
 
 
 namespace DbComparer.ProcHelper;
 public static class ProcedureFetcher
 {
-    public static List<string> GetProcedureNames(SqlConnection connection)
+    /// <summary>
+    /// Retrieves the names of all stored procedures from the source database.
+    /// </summary>
+    /// <param name="sourceConnectionString"></param>
+    /// <returns></returns>
+    public static List<string> GetProcedureNames(string sourceConnectionString)
     {
-        return connection.Query<string>("tools.spGetProcsNames",commandType: CommandType.StoredProcedure).AsList();
+        using var sourceConnection = new SqlConnection(sourceConnectionString);
+        var list = sourceConnection.Query<string>("tools.spGetProcsNames").AsList();
+        return list;
     }
-    public static (string corewellBody, string cmhBody) GetProcedureBody(string procedureName)
+    
+    
+    /// <summary>
+    /// Returns the body of a stored procedure from both source and destination databases.
+    /// </summary>
+    /// <param name="procedureName"></param>
+    /// <returns></returns>
+    public static (string sourceBody, string destinationBody) GetProcedureBody(string sourceConnectionString, string destinationConnectionString, string procedureName)
     {
-        string corewellBody = DatabaseConnections.GetCorewellConnection().QueryFirst<string>("tools.spGetProcBody",new { procName = procedureName },commandType: CommandType.StoredProcedure);
-        string cmhBody = DatabaseConnections.GetCmhConnection().QueryFirst<string>("tools.spGetProcBody",new { procName = procedureName },commandType: CommandType.StoredProcedure);
-        return (corewellBody, cmhBody);
+        using SqlConnection sourceConnection      = new SqlConnection(sourceConnectionString);
+        using SqlConnection destinationConnection = new SqlConnection(destinationConnectionString);
+
+        string sourceBody      = sourceConnection.QueryFirst<string>("tools.spGetProcBody",new { procName = procedureName });
+        string destinationBody = destinationConnection.QueryFirst<string>("tools.spGetProcBody", new { procName = procedureName });
+        return (sourceBody, destinationBody);
     }
 }

@@ -1,9 +1,11 @@
 ﻿namespace DbComparer;
 public class Program
 {
+    private const string OutputFolder = @"C:\Users\Nada\Documents";
+    static readonly string SourceConnectionString = Environment.GetEnvironmentVariable("CorewellCs");
+    static readonly string DestinationConnectionString = Environment.GetEnvironmentVariable("CmhCs");
     public static void Main(string[] args)
     {
-        DbComparer.ProcsAnalyzer(@"C:\Users\Nada\Documents", true);
+        DbComparer.CompareProcs(new("Corewell", SourceConnectionString), new("CMH", DestinationConnectionString), OutputFolder, ComparerAction.DoNotApplyChanges);
     }
 }
-
