@@ -21,8 +21,15 @@ public class Program
             , new DbServer("CMH", DestinationConnectionString)
             , OutputFolder
             , ComparerAction.DoNotApplyChanges
-            , ProcsFilter.HideUnchangedProcs
+            , DbObjectFilter.HideUnchangedProcs
         );
+        DbComparer.CompareViews(
+           new DbServer("Corewell", SourceConnectionString)
+           , new DbServer("CMH", DestinationConnectionString)
+           , OutputFolder
+           , ComparerAction.DoNotApplyChanges
+           , DbObjectFilter.ShowUnchangedProcs
+       );
         sw.Stop();
         Console.WriteLine($"Elapsed time: {sw} ms");
     }

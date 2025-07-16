@@ -1,15 +1,18 @@
 ﻿using System.Text;
+using static DbComparer.DbObjectHandler;
+
+
 
 namespace DbComparer.HtmlHelper;
 
-public static class HtmlReportWriter
+public static class HtmlReportWriter 
 {
     private const string Value = @"
 <!DOCTYPE html>
 <html lang=""en"">
 <head>
     <meta charset=""UTF-8"">
-    <title>Procedure Comparison Summary</title>
+    <title>{MetaData} Comparison Summary</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -55,11 +58,11 @@ public static class HtmlReportWriter
     </style>
 </head>
 <body>
-    <h1>Procedure Comparison Summary</h1>
+    <h1>{MetaData} Comparison Summary</h1>
     <table>
         <tr>
             <th></th>
-            <th>Procedure Name</th>
+            <th>{MetaData} Name</th>
             <th>Status</th>
             <th>{source} Original</th>
             <th>{destination} Original</th>
@@ -68,35 +71,36 @@ public static class HtmlReportWriter
     ";
 
     #region Summary Report Writer
-    public static void WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<ProcedureResult> procedures, ProcsFilter filter)
+    public static void WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<dbObjectResult> results, DbObjectFilter filter)
     {
         StringBuilder html = new();
-        html.Append(Value.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name));
+        var result = results[0];
+        html.Append(Value.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}",result.Type));
 
-        int procNumber = 1;
-        foreach (var proc in procedures)
+        int Number = 1;
+        foreach (var item in results)
         {
-            string sourceColumn = proc.SourceFile != null
-                ? $@"<a href=""{proc.SourceFile}"">View</a>"
+            string sourceColumn = item.SourceFile != null
+                ? $@"<a href=""{item.SourceFile}"">View</a>"
                 : "—";
-            string destinationColumn = proc.DestinationFile != null
-                ? $@"<a href=""{proc.DestinationFile}"">View</a>"
+            string destinationColumn = item.DestinationFile != null
+                ? $@"<a href=""{item.DestinationFile}"">View</a>"
                 : "—";
-            string newColumn = proc.NewFile != null
-                ? $@"<a href=""{proc.NewFile}"">View</a>"
+            string newColumn = item.NewFile != null
+                ? $@"<a href=""{item.NewFile}"">View</a>"
                 : "—";
-            if ((proc.IsEqual && filter == ProcsFilter.ShowUnchangedProcs) || !proc.IsEqual)
+            if ((item.IsEqual && filter == DbObjectFilter.ShowUnchangedProcs) || !item.IsEqual)
             {
                 html.Append($@"
         <tr>
-            <td>{procNumber}</td>
-            <td>{proc.Name}</td>
-            <td>{(proc.IsEqual ? "<span class='match'>Match</span>" : "<span class='diff'>Different</span>")}</td>
+            <td>{Number}</td>
+            <td>{item.Name}</td>
+            <td>{(item.IsEqual ? "<span class='match'>Match</span>" : "<span class='diff'>Different</span>")}</td>
             <td>{sourceColumn}</td>
             <td>{destinationColumn}</td>
             <td>{newColumn}</td>
         </tr>");
-                procNumber++;
+                Number++;
             }
         }
         html.Append(@"
@@ -108,7 +112,7 @@ public static class HtmlReportWriter
     #endregion
 
     #region Individual Procedure Body Writer
-    public static void WriteProcedureBodyHtml(string filePath, string title, string body, string returnPage)
+    public static void WriteBodyHtml(string filePath, string title, string body, string returnPage)
     {
         string escapedBody = EscapeHtml(body);
         string content = $@"
