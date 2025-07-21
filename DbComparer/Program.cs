@@ -2,7 +2,7 @@
 using System.Diagnostics;
 
 namespace DbComparer;
-public class Program
+public class Program  
 {
     private const string OutputFolder = @"DbComparer-output";
     static readonly string SourceConnectionString = Environment.GetEnvironmentVariable("CorewellCs");

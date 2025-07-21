@@ -90,7 +90,7 @@ public class DbComparer : DbObjectHandler
         string viewsFolderPath = Path.Combine(outputFolder, "Views");
         Directory.CreateDirectory(viewsFolderPath);
 
-        //List<string> views = new() { "ccc.vwCommandL1_old","ccc.vwCopyEdits","ccc.vwRequests "};
+        //List<string> views = new() { "ccc.vwCommandL1_old", "ccc.vwCopyEdits", "ccc.vwRequests ", "[core].[vwUtcRequests2]" };
         List<string> views = ViewFetcher.GetViewsNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
