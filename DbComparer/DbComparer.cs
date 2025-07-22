@@ -1,7 +1,7 @@
 ﻿using DbComparer.HtmlHelper;
 using DbComparer.ProcHelper;
+using DbComparer.TableHelper;
 using DbComparer.ViewHelper;
-using Microsoft.Identity.Client;
 
 namespace DbComparer;
 public enum ComparerAction
@@ -24,7 +24,7 @@ public class DbComparer : DbObjectHandler
         Directory.CreateDirectory(proceduresFolderPath);
 
 
-        //List<string> procedures = new() { "temporary.test1", "temporary.test2" , "adminapp.spAvgRequestsCompletedPerHourPerConcierge" };
+        //List<string> procedures = new() { "temporary.test1", "temporary.test2", "adminapp.spAvgRequestsCompletedPerHourPerConcierge" };
         List<string> procedures = ProcedureFetcher.GetProcedureNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
@@ -73,7 +73,7 @@ public class DbComparer : DbObjectHandler
 
             results.Add(new dbObjectResult
             {
-                Type="Proc",
+                Type = "Proc",
                 Name = proc,
                 IsEqual = areEqual,
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
@@ -90,7 +90,7 @@ public class DbComparer : DbObjectHandler
         string viewsFolderPath = Path.Combine(outputFolder, "Views");
         Directory.CreateDirectory(viewsFolderPath);
 
-        //List<string> views = new() { "ccc.vwCommandL1_old", "ccc.vwCopyEdits", "ccc.vwRequests ", "[core].[vwUtcRequests2]" };
+        //List<string> views = new() { "vwUtcRequests2", "ccc.vwCopyEdits", "ccc.vwRequests ", "[core].[vwUtcRequests2]" };
         List<string> views = ViewFetcher.GetViewsNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
@@ -149,6 +149,86 @@ public class DbComparer : DbObjectHandler
         }
 
         HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(viewsFolderPath, "index.html"), results, filter);
+    }
+    public static void CompareTables(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)
+    {
+        Directory.CreateDirectory(outputFolder);
+        string tablesFolderPath = Path.Combine(outputFolder, "Tables");
+        Directory.CreateDirectory(tablesFolderPath);
+
+        //List<string> tables = new() {"dbo.App","dbo.Client"};
+        List<string> tables = TableFetcher.GetTablesNames(sourceServer.connectionString);
+
+        List<dbObjectResult> results = new();
+        bool areEqual = false;
+
+        Serilog.Log.Information("Tables:");
+        foreach (var table in tables)
+        {
+            string[] parts = table.Split('.');
+            string schema = parts.Length > 1 ? parts[0] : "dbo"; // fallback if no dot
+            string safeSchema = MakeSafe(schema);
+            string safeName = MakeSafe(table);
+
+            string schemaFolder = Path.Combine(tablesFolderPath, safeSchema);
+
+            (List<tableDto> sourceInfo, List<tableDto> destinationInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, table);
+            for (int i = 0; i < sourceInfo.Count; i++)
+            {
+                var tableDto = sourceInfo[i];
+                (areEqual, List<string> differences) = TableComparerAndUpdater.ComparerAndUpdater(destinationServer.connectionString, sourceInfo[i], destinationInfo[i], table, makeChange);
+                if (!areEqual)
+                {
+                    foreach (var difference in differences)
+                    {
+                        Serilog.Log.Information($"{table}: {difference}");
+                    }
+                }
+            }
+            if (areEqual)
+            {
+                Serilog.Log.Information($"{table}: No Changes");
+            }
+            string sourceFile = $"{safeName}_{sourceServer.name}.html";
+            string destinationFile = $"{safeName}_{destinationServer.name}.html";
+            string newFile = $"{safeName}_New.html";
+
+            string returnPage = Path.Combine("..", "index.html");
+
+            bool isVisible = false;
+            if ((areEqual && filter == DbObjectFilter.ShowUnchangedProcs) || !areEqual)
+            {
+                Directory.CreateDirectory(schemaFolder);
+                string sourcePath = Path.Combine(schemaFolder, sourceFile);
+                string destinationPath = Path.Combine(schemaFolder, destinationFile);
+                HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name} Table Info", TableFetcher.PrintTableInfo(sourceInfo), returnPage);
+                HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name} Table Info", TableFetcher.PrintTableInfo(destinationInfo), returnPage);
+                isVisible = true;
+            }
+            List<tableDto> destinationNewInfo = destinationInfo;
+            bool wasAltered = false;
+
+            if (makeChange == ComparerAction.ApplyChanges)
+            {
+                (_, destinationNewInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, table);
+                string newPath = Path.Combine(schemaFolder, newFile);
+                HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name} Table Info", TableFetcher.PrintTableInfo(destinationNewInfo), returnPage);
+                wasAltered = true;
+            }
+
+            results.Add(new dbObjectResult
+            {
+                Type = "Table",
+                Name = table,
+                IsEqual = areEqual,
+                SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
+                DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
+                NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
+            });
+        }
+
+        HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(tablesFolderPath, "index.html"), results, filter);
+
     }
     private static string MakeSafe(string name)
     {

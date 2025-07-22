@@ -30,6 +30,13 @@ public class Program
            , ComparerAction.DoNotApplyChanges
            , DbObjectFilter.ShowUnchangedProcs
        );
+        DbComparer.CompareTables(
+         new DbServer("Corewell", SourceConnectionString)
+         , new DbServer("CMH", DestinationConnectionString)
+         , OutputFolder
+         , ComparerAction.DoNotApplyChanges
+         , DbObjectFilter.ShowUnchangedProcs
+     );
         sw.Stop();
         Console.WriteLine($"Elapsed time: {sw} ms");
     }

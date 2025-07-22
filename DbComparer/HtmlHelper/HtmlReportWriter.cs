@@ -5,7 +5,7 @@ using static DbComparer.DbObjectHandler;
 
 namespace DbComparer.HtmlHelper;
 
-public static class HtmlReportWriter 
+public static class HtmlReportWriter
 {
     private const string Value = @"
 <!DOCTYPE html>
@@ -75,7 +75,7 @@ public static class HtmlReportWriter
     {
         StringBuilder html = new();
         var result = results[0];
-        html.Append(Value.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}",result.Type));
+        html.Append(Value.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type));
 
         int Number = 1;
         foreach (var item in results)
@@ -115,6 +115,10 @@ public static class HtmlReportWriter
     public static void WriteBodyHtml(string filePath, string title, string body, string returnPage)
     {
         string escapedBody = EscapeHtml(body);
+        if (title.Contains("Table"))
+        {
+            escapedBody = body;
+        }
         string content = $@"
 <!DOCTYPE html>
 <html lang=""en"">
@@ -137,7 +141,7 @@ public static class HtmlReportWriter
             text-align: center;
             margin-bottom: 40px;
         }}
-        pre {{
+        div {{
             background-color: #f9f9f9;
             padding: 20px;
             border-radius: 8px;
@@ -149,6 +153,36 @@ public static class HtmlReportWriter
             word-wrap: break-word;
             color: #222;
             margin-bottom: 40px;
+        }}
+        table {{width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 40px;
+            font-size: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+        }}
+        
+        th, td {{padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }}
+        
+        th {{background - color: #EC317F;
+            color: #EC317F;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }}
+        
+        tr:nth-child(even) {{background - color: #f9f9f9;
+        }}
+        
+        tr:hover {{background - color: #f1f1f1;
+        }}
+        
+        td {{color: #222;
         }}
         .return-btn {{
             display: block;
@@ -172,7 +206,7 @@ public static class HtmlReportWriter
 </head>
 <body>
     <h1>{title}</h1>
-    <pre>{escapedBody}</pre>
+    <div>{escapedBody}</div>
     <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
 </body>
 </html>";
