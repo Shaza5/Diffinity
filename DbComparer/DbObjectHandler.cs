@@ -1,5 +1,4 @@
 ﻿using Dapper;
-using DbComparer.ProcHelper;
 using Microsoft.Data.SqlClient;
 using System.Security.Cryptography;
 using System.Text;
@@ -40,13 +39,19 @@ public class DbObjectHandler
         }
         #endregion
     }
-    public static void AlterDbObject(string destinationConnectionString, string dbObjectBody)
+    public static void AlterDbObject(string destinationConnectionString, string sourceBody,string destinationBody)
     {
-        if (string.IsNullOrWhiteSpace(dbObjectBody)) throw new ArgumentException("View body cannot be null or empty.", nameof(dbObjectBody));
-
-        string alteredBody = ReplaceCreateWithAlter(dbObjectBody);
+        if (string.IsNullOrWhiteSpace(sourceBody)) throw new ArgumentException("Source body cannot be null or empty.");
         using var sourceConnection = new SqlConnection(destinationConnectionString);
-        sourceConnection.Execute(alteredBody);
+        if (string.IsNullOrWhiteSpace(destinationBody))
+        {
+            sourceConnection.Execute(sourceBody);
+        }
+        else
+        {
+            string alteredBody = ReplaceCreateWithAlter(sourceBody);
+            sourceConnection.Execute(alteredBody);
+        }
 
         #region local functions
         string ReplaceCreateWithAlter(string body) => body.Replace("CREATE", "ALTER").Replace("Create", "ALTER").Replace("create", "ALTER");
@@ -57,9 +62,11 @@ public class DbObjectHandler
     {
         public string Type { get; set; }
         public string Name { get; set; }
+        public bool IsDestinationEmpty { get; set; }
         public bool IsEqual { get; set; }
         public string SourceFile { get; set; }
         public string DestinationFile { get; set; }
+        public string? DifferencesFile { get; set; }
         public string? NewFile { get; set; } // null if not altered
     }
 }

@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using DbComparer.HtmlHelper;
+using Serilog;
 using System.Diagnostics;
 
 namespace DbComparer;
@@ -16,27 +17,28 @@ public class Program
 
         var sw = new Stopwatch();
         sw.Start();
-        DbComparer.CompareProcs(
+        string procIndexPath = DbComparer.CompareProcs(
             new DbServer("Corewell", SourceConnectionString)
             , new DbServer("CMH", DestinationConnectionString)
             , OutputFolder
             , ComparerAction.DoNotApplyChanges
-            , DbObjectFilter.HideUnchangedProcs
+            , DbObjectFilter.HideUnchanged
         );
-        DbComparer.CompareViews(
+       string viewIndexPath = DbComparer.CompareViews(
            new DbServer("Corewell", SourceConnectionString)
            , new DbServer("CMH", DestinationConnectionString)
            , OutputFolder
            , ComparerAction.DoNotApplyChanges
-           , DbObjectFilter.ShowUnchangedProcs
+           , DbObjectFilter.HideUnchanged
        );
-        DbComparer.CompareTables(
+        string tableIndexpath = DbComparer.CompareTables(
          new DbServer("Corewell", SourceConnectionString)
          , new DbServer("CMH", DestinationConnectionString)
          , OutputFolder
          , ComparerAction.DoNotApplyChanges
-         , DbObjectFilter.ShowUnchangedProcs
+         , DbObjectFilter.HideUnchanged
      );
+        HtmlReportWriter.WriteComparisonSummary(OutputFolder, procIndexPath, viewIndexPath, tableIndexpath);
         sw.Stop();
         Console.WriteLine($"Elapsed time: {sw} ms");
     }

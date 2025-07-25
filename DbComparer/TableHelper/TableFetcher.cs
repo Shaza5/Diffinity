@@ -31,41 +31,13 @@ public class TableFetcher
         return (sourceInfo, destinationInfo);
 
     }
-    public static string PrintTableInfo(List<tableDto> tableInfo)
-    {
-        StringBuilder sb = new StringBuilder();
-        sb.AppendLine(@"<table border='1'>
-       <tr>
-       <th>Column Name</th>
-       <th>Column Type</th>
-       <th>Is Nullable</th>
-       <th>Max Length</th>
-       <th>Is Primary Key</th>
-       <th>Is Foreign Key</th>
-       </tr>");
-
-        foreach (tableDto column in tableInfo)
-        {
-            sb.AppendLine($@"<tr>
-            <td>{column.columnName}</td>
-            <td>{column.columnType}</td>
-            <td>{column.isNullable}</td>
-            <td>{column.maxLength}</td>
-            <td>{column.isPrimaryKey}</td>
-            <td>{column.isForeignKey}</td>
-            </tr>");
-        }
-
-        sb.AppendLine("</table>");
-        return sb.ToString();
-    }
 }
 public class tableDto
 {
     public string columnName { get; set; }
     public string columnType { get; set; }
     public string isNullable { get; set; }
-    public int maxLength { get; set; }
+    public string maxLength { get; set; }
     public string isPrimaryKey { get; set; }
     public string isForeignKey { get; set; }
 }

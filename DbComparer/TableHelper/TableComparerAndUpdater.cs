@@ -15,7 +15,8 @@ public static class TableComparerAndUpdater
         #region 1- Column Name
         if (sourceTable.columnName != destinationTable.columnName)
         {
-            differences.Add($"columnName:'{sourceTable.columnName}' != '{destinationTable.columnName}'");
+            differences.Add(sourceTable.columnName);
+            differences.Add(destinationTable.columnName);
             areEqual = false;
             if (makeChange == ComparerAction.ApplyChanges)
             {

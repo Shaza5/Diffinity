@@ -11,20 +11,20 @@ public enum ComparerAction
 }
 public enum DbObjectFilter
 {
-    ShowUnchangedProcs,
-    HideUnchangedProcs
+    ShowUnchanged,
+    HideUnchanged
 }
 public record DbServer(string name, string connectionString);
 public class DbComparer : DbObjectHandler
 {
-    public static void CompareProcs(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)
+    public static string CompareProcs(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)
     {
         Directory.CreateDirectory(outputFolder);
         string proceduresFolderPath = Path.Combine(outputFolder, "Procedures");
         Directory.CreateDirectory(proceduresFolderPath);
 
 
-        //List<string> procedures = new() { "temporary.test1", "temporary.test2", "adminapp.spAvgRequestsCompletedPerHourPerConcierge" };
+        //List<string> procedures = new() { "joelle.rePopulateCommandBags","ccc.spCreateConcierge","temporary.test1", "temporary.test2", "adminapp.spAvgRequestsCompletedPerHourPerConcierge" };
         List<string> procedures = ProcedureFetcher.GetProcedureNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
@@ -45,18 +45,21 @@ public class DbComparer : DbObjectHandler
             Serilog.Log.Information($"{proc}: {change}");
             string sourceFile = $"{safeName}_{sourceServer.name}.html";
             string destinationFile = $"{safeName}_{destinationServer.name}.html";
+            string differencesFile = $"{safeName}_differences.html";
             string newFile = $"{safeName}_New.html";
 
             string returnPage = Path.Combine("..", "index.html");
 
             bool isVisible = false;
-            if ((areEqual && filter == DbObjectFilter.ShowUnchangedProcs) || !areEqual)
+            if ((areEqual && filter == DbObjectFilter.ShowUnchanged) || !areEqual)
             {
                 Directory.CreateDirectory(schemaFolder);
                 string sourcePath = Path.Combine(schemaFolder, sourceFile);
                 string destinationPath = Path.Combine(schemaFolder, destinationFile);
-                HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name} Procedure Body", sourceBody, returnPage);
-                HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name} Procedure Body", destinationBody, returnPage);
+                string differencesPath= Path.Combine(schemaFolder, differencesFile);
+                HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name}", sourceBody, returnPage);
+                HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name}", destinationBody, returnPage);
+                HtmlReportWriter.DifferencesWriter(differencesPath,sourceServer.name, destinationServer.name, sourceBody, destinationBody, "Differences",proc, returnPage);
                 isVisible = true;
             }
             string destinationNewBody = destinationBody;
@@ -64,10 +67,10 @@ public class DbComparer : DbObjectHandler
 
             if (!areEqual && makeChange == ComparerAction.ApplyChanges)
             {
-                AlterDbObject(destinationServer.connectionString, sourceBody);
+                AlterDbObject(destinationServer.connectionString, sourceBody,destinationBody);
                 (_, destinationNewBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString, destinationServer.connectionString, proc);
                 string newPath = Path.Combine(schemaFolder, newFile);
-                HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name} Procedure Body", destinationNewBody, returnPage);
+                HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name}", destinationNewBody, returnPage);
                 wasAltered = true;
             }
 
@@ -78,19 +81,21 @@ public class DbComparer : DbObjectHandler
                 IsEqual = areEqual,
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
+                DifferencesFile = Path.Combine(safeSchema, differencesFile),
                 NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
             });
         }
 
         HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(proceduresFolderPath, "index.html"), results, filter);
+        return ("Procedures/index.html");
     }
-    public static void CompareViews(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)
+    public static string CompareViews(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)
     {
         Directory.CreateDirectory(outputFolder);
         string viewsFolderPath = Path.Combine(outputFolder, "Views");
         Directory.CreateDirectory(viewsFolderPath);
 
-        //List<string> views = new() { "vwUtcRequests2", "ccc.vwCopyEdits", "ccc.vwRequests ", "[core].[vwUtcRequests2]" };
+        //List<string> views = new() { "joelle.ConciergeAppAddons","vwUtcRequests2", "ccc.vwCopyEdits", "ccc.vwRequests ", "[core].[vwUtcRequests2]" };
         List<string> views = ViewFetcher.GetViewsNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
@@ -111,18 +116,22 @@ public class DbComparer : DbObjectHandler
             Serilog.Log.Information($"{view}: {change}");
             string sourceFile = $"{safeName}_{sourceServer.name}.html";
             string destinationFile = $"{safeName}_{destinationServer.name}.html";
+            string differencesFile = $"{safeName}_differences.html";
             string newFile = $"{safeName}_New.html";
 
             string returnPage = Path.Combine("..", "index.html");
 
+            bool isDestinationEmpty =string.IsNullOrEmpty(destinationBody);
             bool isVisible = false;
-            if ((areEqual && filter == DbObjectFilter.ShowUnchangedProcs) || !areEqual)
+            if ((areEqual && filter == DbObjectFilter.ShowUnchanged) || !areEqual)
             {
                 Directory.CreateDirectory(schemaFolder);
                 string sourcePath = Path.Combine(schemaFolder, sourceFile);
                 string destinationPath = Path.Combine(schemaFolder, destinationFile);
-                HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name} View Body", sourceBody, returnPage);
-                HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name} View Body", destinationBody, returnPage);
+                string differencesPath = Path.Combine(schemaFolder, differencesFile);
+                HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name}", sourceBody, returnPage);
+                HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name}", destinationBody, returnPage);
+                HtmlReportWriter.DifferencesWriter(differencesPath, sourceServer.name, destinationServer.name, sourceBody, destinationBody, "Differences",view, returnPage);
                 isVisible = true;
             }
             string destinationNewBody = destinationBody;
@@ -130,10 +139,10 @@ public class DbComparer : DbObjectHandler
 
             if (!areEqual && makeChange == ComparerAction.ApplyChanges)
             {
-                AlterDbObject(destinationServer.connectionString, sourceBody);
+                AlterDbObject(destinationServer.connectionString, sourceBody, destinationBody);
                 (_, destinationNewBody) = ViewFetcher.GetViewBody(sourceServer.connectionString, destinationServer.connectionString, view);
                 string newPath = Path.Combine(schemaFolder, newFile);
-                HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name} View Body", destinationNewBody, returnPage);
+                HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name}", destinationNewBody, returnPage);
                 wasAltered = true;
             }
 
@@ -141,16 +150,19 @@ public class DbComparer : DbObjectHandler
             {
                 Type = "View",
                 Name = view,
+                IsDestinationEmpty = isDestinationEmpty,
                 IsEqual = areEqual,
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
+                DifferencesFile = Path.Combine(safeSchema, differencesFile),
                 NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
             });
         }
 
         HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(viewsFolderPath, "index.html"), results, filter);
+        return ("Views/index.html");
     }
-    public static void CompareTables(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)
+    public static string CompareTables(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)
     {
         Directory.CreateDirectory(outputFolder);
         string tablesFolderPath = Path.Combine(outputFolder, "Tables");
@@ -171,7 +183,7 @@ public class DbComparer : DbObjectHandler
             string safeName = MakeSafe(table);
 
             string schemaFolder = Path.Combine(tablesFolderPath, safeSchema);
-
+            List<string> allDifferences= new List<string>();
             (List<tableDto> sourceInfo, List<tableDto> destinationInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, table);
             for (int i = 0; i < sourceInfo.Count; i++)
             {
@@ -179,16 +191,15 @@ public class DbComparer : DbObjectHandler
                 (areEqual, List<string> differences) = TableComparerAndUpdater.ComparerAndUpdater(destinationServer.connectionString, sourceInfo[i], destinationInfo[i], table, makeChange);
                 if (!areEqual)
                 {
-                    foreach (var difference in differences)
-                    {
-                        Serilog.Log.Information($"{table}: {difference}");
-                    }
+                    allDifferences.AddRange(differences);
+                    Serilog.Log.Information($"{table}: Changes detected");
                 }
             }
             if (areEqual)
             {
                 Serilog.Log.Information($"{table}: No Changes");
             }
+
             string sourceFile = $"{safeName}_{sourceServer.name}.html";
             string destinationFile = $"{safeName}_{destinationServer.name}.html";
             string newFile = $"{safeName}_New.html";
@@ -196,13 +207,13 @@ public class DbComparer : DbObjectHandler
             string returnPage = Path.Combine("..", "index.html");
 
             bool isVisible = false;
-            if ((areEqual && filter == DbObjectFilter.ShowUnchangedProcs) || !areEqual)
+            if ((areEqual && filter == DbObjectFilter.ShowUnchanged) || !areEqual)
             {
                 Directory.CreateDirectory(schemaFolder);
                 string sourcePath = Path.Combine(schemaFolder, sourceFile);
                 string destinationPath = Path.Combine(schemaFolder, destinationFile);
-                HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name} Table Info", TableFetcher.PrintTableInfo(sourceInfo), returnPage);
-                HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name} Table Info", TableFetcher.PrintTableInfo(destinationInfo), returnPage);
+                HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name} Table", HtmlReportWriter.PrintTableInfo(sourceInfo,allDifferences), returnPage);
+                HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationInfo,allDifferences), returnPage);
                 isVisible = true;
             }
             List<tableDto> destinationNewInfo = destinationInfo;
@@ -212,7 +223,7 @@ public class DbComparer : DbObjectHandler
             {
                 (_, destinationNewInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, table);
                 string newPath = Path.Combine(schemaFolder, newFile);
-                HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name} Table Info", TableFetcher.PrintTableInfo(destinationNewInfo), returnPage);
+                HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationNewInfo,null), returnPage);
                 wasAltered = true;
             }
 
@@ -228,7 +239,7 @@ public class DbComparer : DbObjectHandler
         }
 
         HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(tablesFolderPath, "index.html"), results, filter);
-
+        return ("Tables/index.html");
     }
     private static string MakeSafe(string name)
     {
