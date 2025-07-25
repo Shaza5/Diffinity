@@ -2,6 +2,7 @@
 using DbComparer.ProcHelper;
 using DbComparer.TableHelper;
 using DbComparer.ViewHelper;
+using Microsoft.IdentityModel.Tokens;
 
 namespace DbComparer;
 public enum ComparerAction
@@ -33,7 +34,7 @@ public class DbComparer : DbObjectHandler
         foreach (var proc in procedures)
         {
             string[] parts = proc.Split('.');
-            string schema = parts.Length > 1 ? parts[0] : "dbo"; // fallback if no dot
+            string schema = parts.Length > 1 ? parts[0] : "dbo"; 
             string safeSchema = MakeSafe(schema);
             string safeName = MakeSafe(proc);
 
@@ -50,16 +51,20 @@ public class DbComparer : DbObjectHandler
 
             string returnPage = Path.Combine("..", "index.html");
 
+            bool isDestinationEmpty = string.IsNullOrWhiteSpace(destinationBody);
             bool isVisible = false;
             if ((areEqual && filter == DbObjectFilter.ShowUnchanged) || !areEqual)
             {
                 Directory.CreateDirectory(schemaFolder);
                 string sourcePath = Path.Combine(schemaFolder, sourceFile);
                 string destinationPath = Path.Combine(schemaFolder, destinationFile);
-                string differencesPath= Path.Combine(schemaFolder, differencesFile);
                 HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name}", sourceBody, returnPage);
                 HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name}", destinationBody, returnPage);
-                HtmlReportWriter.DifferencesWriter(differencesPath,sourceServer.name, destinationServer.name, sourceBody, destinationBody, "Differences",proc, returnPage);
+                if (!isDestinationEmpty)
+                {
+                    string differencesPath = Path.Combine(schemaFolder, differencesFile);
+                    HtmlReportWriter.DifferencesWriter(differencesPath, sourceServer.name, destinationServer.name, sourceBody, destinationBody, "Differences", proc, returnPage);
+                }
                 isVisible = true;
             }
             string destinationNewBody = destinationBody;
@@ -78,6 +83,7 @@ public class DbComparer : DbObjectHandler
             {
                 Type = "Proc",
                 Name = proc,
+                IsDestinationEmpty = isDestinationEmpty,
                 IsEqual = areEqual,
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
@@ -95,7 +101,7 @@ public class DbComparer : DbObjectHandler
         string viewsFolderPath = Path.Combine(outputFolder, "Views");
         Directory.CreateDirectory(viewsFolderPath);
 
-        //List<string> views = new() { "joelle.ConciergeAppAddons","vwUtcRequests2", "ccc.vwCopyEdits", "ccc.vwRequests ", "[core].[vwUtcRequests2]" };
+        //List<string> views = new() { "joelle.ConciergeAppAddons","ccc.vwCopyEdits", "ccc.vwRequests ", "[core].[vwUtcRequests2]" };
         List<string> views = ViewFetcher.GetViewsNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
@@ -104,7 +110,7 @@ public class DbComparer : DbObjectHandler
         foreach (var view in views)
         {
             string[] parts = view.Split('.');
-            string schema = parts.Length > 1 ? parts[0] : "dbo"; // fallback if no dot
+            string schema = parts.Length > 1 ? parts[0] : "dbo"; 
             string safeSchema = MakeSafe(schema);
             string safeName = MakeSafe(view);
 
@@ -128,10 +134,13 @@ public class DbComparer : DbObjectHandler
                 Directory.CreateDirectory(schemaFolder);
                 string sourcePath = Path.Combine(schemaFolder, sourceFile);
                 string destinationPath = Path.Combine(schemaFolder, destinationFile);
-                string differencesPath = Path.Combine(schemaFolder, differencesFile);
                 HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name}", sourceBody, returnPage);
                 HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name}", destinationBody, returnPage);
-                HtmlReportWriter.DifferencesWriter(differencesPath, sourceServer.name, destinationServer.name, sourceBody, destinationBody, "Differences",view, returnPage);
+                if (!isDestinationEmpty)
+                {
+                    string differencesPath = Path.Combine(schemaFolder, differencesFile);
+                    HtmlReportWriter.DifferencesWriter(differencesPath, sourceServer.name, destinationServer.name, sourceBody, destinationBody, "Differences", view, returnPage);
+                }
                 isVisible = true;
             }
             string destinationNewBody = destinationBody;
@@ -178,13 +187,13 @@ public class DbComparer : DbObjectHandler
         foreach (var table in tables)
         {
             string[] parts = table.Split('.');
-            string schema = parts.Length > 1 ? parts[0] : "dbo"; // fallback if no dot
+            string schema = parts.Length > 1 ? parts[0] : "dbo";
             string safeSchema = MakeSafe(schema);
             string safeName = MakeSafe(table);
-
             string schemaFolder = Path.Combine(tablesFolderPath, safeSchema);
             List<string> allDifferences= new List<string>();
             (List<tableDto> sourceInfo, List<tableDto> destinationInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, table);
+            bool isDestinationEmpty = destinationInfo.IsNullOrEmpty();
             for (int i = 0; i < sourceInfo.Count; i++)
             {
                 var tableDto = sourceInfo[i];
@@ -231,6 +240,7 @@ public class DbComparer : DbObjectHandler
             {
                 Type = "Table",
                 Name = table,
+                IsDestinationEmpty = isDestinationEmpty,
                 IsEqual = areEqual,
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,

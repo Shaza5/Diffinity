@@ -2,8 +2,6 @@
 using DiffPlex;
 using DiffPlex.DiffBuilder;
 using DiffPlex.DiffBuilder.Model;
-using System.Drawing;
-using System.Linq;
 using System.Reflection;
 using System.Text;
 using static DbComparer.DbObjectHandler;
@@ -14,7 +12,7 @@ namespace DbComparer.HtmlHelper;
 
 public static class HtmlReportWriter
 {
-    private const string IndexPageTemplate = @"
+    private const string IndexTemplate = @"
 <!DOCTYPE html>
 <html lang=""en"">
 <head>
@@ -80,7 +78,7 @@ public static class HtmlReportWriter
 </body>
 </html>
 ";
-    private const string ComparisonSummaryPageTemplate = @"
+    private const string ComparisonTemplate = @"
 <!DOCTYPE html>
 <html lang=""en"">
 <head>
@@ -150,6 +148,7 @@ public static class HtmlReportWriter
 </head>
 <body>
     <h1>{MetaData} Comparison Summary</h1>
+    {NewTable}
     <table>
         <tr>
             <th></th>
@@ -161,7 +160,7 @@ public static class HtmlReportWriter
             <th>{destination} New</th>
         </tr>
     ";
-    private const string BodyPageTemplate = @"
+    private const string BodyTemplate = @"
 <!DOCTYPE html>
 <html lang=""en"">
 <head>
@@ -251,31 +250,155 @@ public static class HtmlReportWriter
     .destination { color: red; }
     </style>
   </head>";
+    private const string DifferencesTemplate = @"<!DOCTYPE html>
+       <html>
+       <head>
+       <meta charset='utf-8' />
+       <title>{title}</title>
+       <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 40px auto;
+            max-width: 1600px;
+            background-color: #fff;
+            color: #222;
+            padding: 20px 40px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.07);
+        }
+        h1 {
+            color: #EC317F;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .diff-wrapper {
+            display: flex;
+            gap: 20px;
+        }
+        .pane {
+            width: 48%;
+            background-color: #f9f9f9;
+            padding: 0;
+            border-radius: 8px;
+            overflow: auto;
+            height: 650px;
+            border: 1px solid #ddd;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+        }
+        .pane h2 {
+            margin: 0;
+            padding: 12px 16px;
+            background-color: #f0f0f0;
+            color: black;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+            font-size: 1rem;
+        }
+        .code-block {
+            display: grid;
+            grid-template-columns: 50px 1fr;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            padding: 10px;
+        }
+        .line-number {
+            color: #999;
+            text-align: right;
+            padding-right: 10px;
+            user-select: none;
+        }
+        .line-text {
+            font-family: Consolas;
+            white-space: pre;
+            overflow-wrap: break-word;
+        }
+       .return-btn {
+            display: block;
+            width: 220px;
+            margin: 0 auto;
+            padding: 12px 0;
+            background-color: #EC317F;
+            color: white;
+            font-weight: 600;
+            text-align: center;
+            text-decoration: none;
+            border-radius: 6px;
+            box-shadow: 0 3px 8px rgba(236, 49, 127, 0.25);
+            transition: background-color 0.3s ease;
+            font-size: 1rem;
+        } 
+       .return-btn:hover {
+            background-color: #b42a68;
+        }
+        .inserted { background-color: #c6f6c6; }
+        .deleted { background-color: #f6c6c6; }
+        .imaginary { background-color: #eee; color: #999; }
+        .modified { background-color: #fff3b0; }
+        </style>
+        </head>";
+
+    #region Index Report Writer
+    public static void WriteIndexSummary(string outputPath, string procIndexPath, string viewIndexPath, string tableIndexPath)
+    {
+        StringBuilder html = new StringBuilder();
+        string procsIndex = $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
+        string viewsIndex = $@"<a href=""{viewIndexPath}"" class=""btn"">Views</a>";
+        string tablesIndex = $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>";
+        html.Append(IndexTemplate.Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex));
+        string indexPath = Path.Combine(outputPath, "index.html");
+        File.WriteAllText(indexPath, html.ToString());
+    }
+    #endregion
 
     #region Summary Report Writer
     public static void WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<dbObjectResult> results, DbObjectFilter filter)
     {
         StringBuilder html = new();
         var result = results[0];
-        html.Append(ComparisonSummaryPageTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type));
         string returnPage = Path.Combine("..", "index.html");
+        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type));
+
+        #region 1-Create the new table
+        var newProcedures = results.Where(r => r.IsDestinationEmpty).ToList();
+        if (newProcedures.Any())
+        {
+            StringBuilder newTable = new StringBuilder();
+            newTable.AppendLine($@"<h2 style=""color: #B42A68;"">New {result.Type}s in {sourceServer.name} Database </h2>
+            <table>
+                <tr>
+                    <th></th>
+                    <th>{result.Type} Name</th>
+                    <th></th>
+                </tr>");
+
+            int newCount = 1;
+            foreach (var item in newProcedures)
+            {
+                string sourceLink = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a" : "—";
+                newTable.Append($@"<tr>
+                                <td>{newCount}</td>
+                                <td>{item.Name}</td>
+                                <td>{sourceLink}</td>
+                                </tr>");
+                newCount++;
+            }
+
+            newTable.Append("</table><br><br>");
+            html.Replace("{NewTable}", newTable.ToString());
+        }
+        else
+        {
+            html.Replace("{NewTable}", "");
+        }
+        #endregion
+
+        #region 2-Create the Comparison Table
         int Number = 1;
         foreach (var item in results)
         {
-            string sourceColumn = item.SourceFile != null
-                ? $@"<a href=""{item.SourceFile}"">View</a>"
-                : "—";
-            string destinationColumn;
-            if (!item.IsDestinationEmpty)
-            {
-                 destinationColumn = item.DestinationFile != null
-                    ? $@"<a href=""{item.DestinationFile}"">View</a>"
-                    : "—";
-            }
-            else
-            {
-                destinationColumn = "<span class='diff'>Not Found</span>";
-            }
+            if (item.IsDestinationEmpty) continue;
+            string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
+            string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>" : "—";
             string differencesColumn = null;
             if (item.DifferencesFile != null)
             {
@@ -287,45 +410,30 @@ public static class HtmlReportWriter
                 html.Replace("{differences}", "");
             }
             ;
-            string newColumn = item.NewFile != null
-                ? $@"<a href=""{item.NewFile}"">View</a>"
-                : "—";
+            string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
             if ((item.IsEqual && filter == DbObjectFilter.ShowUnchanged) || !item.IsEqual)
             {
-                html.Append($@"
-        <tr>
-            <td>{Number}</td>
-            <td>{item.Name}</td>
-            <td>{(item.IsEqual ? "<span class='match'>Match</span>" : "<span class='diff'>Different</span>")}</td>
-            <td>{sourceColumn}</td>
-            <td>{destinationColumn}</td>
-            {differencesColumn}
-            <td>{newColumn}</td>
-        </tr>");
+                html.Append($@"<tr>
+                    <td>{Number}</td>
+                    <td>{item.Name}</td>
+                    <td>{(item.IsEqual ? "<span class='match'>Match</span>" : "<span class='diff'>Different</span>")}</td>
+                    <td>{sourceColumn}</td>
+                    <td>{destinationColumn}</td>
+                    {differencesColumn}
+                    <td>{newColumn}</td>
+                     </tr>");
                 Number++;
             }
         }
-        html.Append($@"
-    </table>
-<br>
-   <a href=""{returnPage}"" class=""return-btn"">Return to Index</a>
-</body>
-</html>");
-        File.WriteAllText(summaryPath, html.ToString());
-    }
-    #endregion
+        html.Append($@"</table>
+                       <br>
+                       <a href=""{returnPage}"" class=""return-btn"">Return to Index</a>
+                       </body>
+                       </html>");
+        #endregion
 
-    #region Comparison Summary Report Writer
-    public static void WriteComparisonSummary(string outputPath, string procIndexPath, string viewIndexPath, string tableIndexPath)
-    {
-        StringBuilder html = new StringBuilder();
-        string procsIndex = $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
-        string viewsIndex = $@"<a href=""{viewIndexPath}"" class=""btn"">Views</a>";
-        string tablesIndex = $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>";
-        html.Append(IndexPageTemplate.Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex));
-        string indexPath = Path.Combine(outputPath, "index.html");
-        File.WriteAllText(indexPath, html.ToString());
+        File.WriteAllText(summaryPath, html.ToString());
     }
     #endregion
 
@@ -333,7 +441,7 @@ public static class HtmlReportWriter
     public static void WriteBodyHtml(string filePath, string title, string body, string returnPage)
     {
         StringBuilder html = new StringBuilder();
-        html.AppendLine(BodyPageTemplate.Replace("{title}", title));
+        html.AppendLine(BodyTemplate.Replace("{title}", title));
         string escapedBody = EscapeHtml(body);
         if (title.Contains("Table"))
         {
@@ -350,53 +458,59 @@ public static class HtmlReportWriter
     #endregion
 
     #region Differences Writer
-    public static void DifferencesWriter(string differencesPath, string sourceName, string destinationName, string sourceBody, string destinationBody, string title, string procName, string returnPage)
+    public static void DifferencesWriter(string differencesPath, string sourceName, string destinationName, string sourceBody, string destinationBody, string title, string Name, string returnPage)
     {
+        var differ = new Differ();
+        var sideBySideBuilder = new SideBySideDiffBuilder(differ);
+        var model = sideBySideBuilder.BuildDiffModel(destinationBody, sourceBody);
+
         var html = new StringBuilder();
-        html.AppendLine(BodyPageTemplate.Replace("{title}", title));
+        html.AppendLine(DifferencesTemplate.Replace("{title}", title));
         html.AppendLine(@$"<body>
-                        <h1>{procName}</h1>
-                        <div>");
-
-        var diffBuilder = new InlineDiffBuilder(new Differ());
-        destinationBody ??= string.Empty;
-        sourceBody ??= string.Empty;
-        var result = diffBuilder.BuildDiffModel(destinationBody, sourceBody);
-        foreach (var line in result.Lines)
+                        <h1>{Name}</h1>
+                        <div class='diff-wrapper'>
+                        <div class='pane'><h2>{destinationName}</h2><div class='code-block'>");
+        foreach (var line in model.OldText.Lines)
         {
-            string css = line.Type switch
-            {
-                ChangeType.Inserted => "source",
-                ChangeType.Deleted => "destination",
-                // ChangeType.Modified => "mod",
-                _ => ""
-            };
-
-            string prefix = line.Type switch
-            {
-                ChangeType.Inserted => $"{sourceName} : ",
-                ChangeType.Deleted => $"{destinationName} : ",
-                //ChangeType.Modified => "~ ",
-                _ => "  "
-            };
-
-            html.AppendLine($"<span class='{css}'>{System.Net.WebUtility.HtmlEncode(prefix + line.Text)}</span>");
+            string css = GetCssClass(line.Type);
+            string lineNumber = line.Position == 0 ? "" : line.Position.ToString();
+            html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
+                           <div class='line-text {css}'>{System.Net.WebUtility.HtmlEncode(line.Text)}</div>");
         }
-        html.AppendLine("</div>");
-        html.AppendLine($@"<a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
-    </body>
-    </html>");
+        html.AppendLine(@$"</div></div>
+                        <div class='pane'><h2>{sourceName}</h2><div class='code-block'>");
+        foreach (var line in model.NewText.Lines)
+        {
+            string css = GetCssClass(line.Type);
+            string lineNumber = line.Position == 0 ? "" : line.Position.ToString();
+            html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
+                            <div class='line-text {css}'>{System.Net.WebUtility.HtmlEncode(line.Text)}</div>");
+        }
+        html.AppendLine(@"</div></div></div>
+                        </body>
+                        </html>");
         File.WriteAllText(differencesPath, html.ToString());
     }
     #endregion
 
     #region Helpers
-    private static string EscapeHtml(string input)
+    static string EscapeHtml(string input)
     {
         if (string.IsNullOrEmpty(input)) return string.Empty;
         return input.Replace("&", "&amp;")
                     .Replace("<", "&lt;")
                     .Replace(">", "&gt;");
+    }
+    static string GetCssClass(ChangeType type)
+    {
+        return type switch
+        {
+            ChangeType.Inserted => "inserted",
+            ChangeType.Deleted => "deleted",
+            ChangeType.Imaginary => "imaginary",
+            ChangeType.Modified => "modified",
+            _ => ""
+        };
     }
     public static string PrintTableInfo(List<tableDto> tableInfo, List<string>? differences)
     {
@@ -455,6 +569,7 @@ public static class HtmlReportWriter
 
         sb.AppendLine("</table>");
         return sb.ToString();
+
     }
     #endregion
 

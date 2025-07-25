@@ -38,7 +38,7 @@ public class Program
          , ComparerAction.DoNotApplyChanges
          , DbObjectFilter.HideUnchanged
      );
-        HtmlReportWriter.WriteComparisonSummary(OutputFolder, procIndexPath, viewIndexPath, tableIndexpath);
+        HtmlReportWriter.WriteIndexSummary(OutputFolder, procIndexPath, viewIndexPath, tableIndexpath);
         sw.Stop();
         Console.WriteLine($"Elapsed time: {sw} ms");
     }
