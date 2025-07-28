@@ -2,6 +2,7 @@
 using DiffPlex;
 using DiffPlex.DiffBuilder;
 using DiffPlex.DiffBuilder.Model;
+using Microsoft.Data.SqlClient;
 using System.Reflection;
 using System.Text;
 using static DbComparer.DbObjectHandler;
@@ -27,10 +28,10 @@ public static class HtmlReportWriter
             background-color: #fff;
             color: #333;
         }
-        h1 {
+        h1,h2 {
             color: #EC317F;
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 10px;
         }
         ul {
             list-style-type: none;
@@ -66,10 +67,18 @@ public static class HtmlReportWriter
         .btn:hover {
             background-color: #b42a68;
         }
+        h3{
+        color: #B42A68;
+        text-align: center;
+        margin-bottom:40px;
+        }
     </style>
 </head>
 <body>
     <h1>Database Comparison Summary</h1>
+    <h2>{sourceServer} : {sourceDatabase}</h2>
+    <h2>{destinationServer} : {destinationDatabase}</h2>
+    <h3>{Date}</h3>
     <ul>
         <li>{procsIndex}</li>
         <li>{viewsIndex}</li>
@@ -126,7 +135,39 @@ public static class HtmlReportWriter
         a:hover {
             text-decoration: underline;
         }
-  .return-btn {
+        .top-nav {
+            display: flex;
+            justify-content: center;
+            gap: 60px; /* controls spacing between links */
+            margin-bottom: 40px;
+        }
+        
+        .top-nav a {
+            position: relative;
+            color: #EC317F;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.2rem;
+            padding-bottom: 6px;
+        }
+        
+        .top-nav a::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #EC317F;
+            transform: scaleX(0);
+            transform-origin: bottom left;
+            transition: transform 0.3s ease;
+        }
+        
+        .top-nav a:hover::after {
+            transform: scaleX(1);
+        }
+        .return-btn {
             display: block;
             width: 220px;
             margin: 0 auto;
@@ -148,6 +189,11 @@ public static class HtmlReportWriter
 </head>
 <body>
     <h1>{MetaData} Comparison Summary</h1>
+    <nav class=""top-nav"">
+      <a href=""../Procedures/index.html"">Procedures</a>
+      <a href=""../Views/index.html"">Views</a>
+      <a href=""../Tables/index.html"">Tables</a>
+    </nav>
     {NewTable}
     <table>
         <tr>
@@ -240,7 +286,27 @@ public static class HtmlReportWriter
         }
         .red {color: red;
     }
-
+        .copy-btn {
+            float: right;
+            margin: 0px 12px 0px 50px;
+            background-color: #EC317F;
+            color: white;
+            border: none;
+            font-size : 15px;
+            padding: 10px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
+        }
+        .copy-btn:hover {
+              background-color: #b42a68;
+        }
+        .use{
+            color: #EC317F;
+            font-weight : bold;
+            float: left;
+            font-size: 20px
+        }
         .return-btn:hover {
             background-color: #b42a68;
         }
@@ -337,13 +403,21 @@ public static class HtmlReportWriter
         <body>";
 
     #region Index Report Writer
-    public static void WriteIndexSummary(string outputPath, string procIndexPath, string viewIndexPath, string tableIndexPath)
+    public static void WriteIndexSummary(string sourceConnectionString,string destinationConnectionString, string outputPath, string procIndexPath, string viewIndexPath, string tableIndexPath)
     {
+        var sourceBuilder = new SqlConnectionStringBuilder(sourceConnectionString);
+        var destinationBuilder = new SqlConnectionStringBuilder(destinationConnectionString);
+        string sourceServer = sourceBuilder.DataSource;
+        string destinationServer = destinationBuilder.DataSource;
+        string sourceDatabase = sourceBuilder.InitialCatalog;
+        string destinationDatabase = destinationBuilder.InitialCatalog;
         StringBuilder html = new StringBuilder();
+        DateTime date = DateTime.UtcNow; ;
+        string Date = date.ToString("MM/dd/yyyy hh:mm tt ") + "UTC";
         string procsIndex = $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
         string viewsIndex = $@"<a href=""{viewIndexPath}"" class=""btn"">Views</a>";
         string tablesIndex = $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>";
-        html.Append(IndexTemplate.Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex));
+        html.Append(IndexTemplate.Replace("{sourceServer}",sourceServer).Replace("{sourceDatabase}", sourceDatabase).Replace("{destinationServer}", destinationServer).Replace("{destinationDatabase}", destinationDatabase).Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex).Replace("{Date}", Date));
         string indexPath = Path.Combine(outputPath, "index.html");
         File.WriteAllText(indexPath, html.ToString());
     }
@@ -374,7 +448,7 @@ public static class HtmlReportWriter
             foreach (var item in newProcedures)
             {
                 if (item.SourceFile == null) continue;
-                string sourceLink =$@"<a href=""{item.SourceFile}"">View</a";
+                string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
                 newTable.Append($@"<tr>
                                 <td>{newCount}</td>
                                 <td>{item.Name}</td>
@@ -447,8 +521,27 @@ public static class HtmlReportWriter
             escapedBody = body;
         }
         html.AppendLine($@"<body>
-            <h1>{title}</h1>
-            <div>{escapedBody}</div>
+        <h1>{title}</h1>
+<div>
+<span class=""use"">Use {title}</span> <button class='copy-btn' onclick='copyPane(this)'>Copy</button><br>
+<span class=""copy-target"">{escapedBody}</span>
+</div>
+
+      <script>
+function copyPane(button) {{
+    const container = button.closest('div');
+    const codeBlock = container.querySelector('.copy-target');
+    const text = codeBlock?.innerText.trim();
+
+    navigator.clipboard.writeText(text).then(() => {{
+        button.textContent = 'Copied!';
+        setTimeout(() => button.textContent = 'Copy', 2000);
+    }}).catch(err => {{
+        console.error('Copy failed:', err);
+        alert('Failed to copy!');
+    }});
+}}
+</script>
             <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
             </body>
             </html>");

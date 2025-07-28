@@ -59,7 +59,6 @@ public class DbObjectHandler
         string ReplaceCreateWithAlter(string body) => body.Replace("CREATE", "ALTER").Replace("Create", "ALTER").Replace("create", "ALTER");
         #endregion
     }
-
     public class dbObjectResult
     {
         public string Type { get; set; }
