@@ -25,8 +25,8 @@ public class DbComparer : DbObjectHandler
         Directory.CreateDirectory(proceduresFolderPath);
 
 
-        //List<string> procedures = new() { "joelle.rePopulateCommandBags","ccc.spCreateConcierge","temporary.test1", "temporary.test2", "adminapp.spAvgRequestsCompletedPerHourPerConcierge" };
-        List<string> procedures = ProcedureFetcher.GetProcedureNames(sourceServer.connectionString);
+        List<string> procedures = new() { "joelle.rePopulateCommandBags","ccc.spCreateConcierge","temporary.test1", "temporary.test2", "adminapp.spAvgRequestsCompletedPerHourPerConcierge" };
+        //List<string> procedures = ProcedureFetcher.GetProcedureNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
 
@@ -101,8 +101,8 @@ public class DbComparer : DbObjectHandler
         string viewsFolderPath = Path.Combine(outputFolder, "Views");
         Directory.CreateDirectory(viewsFolderPath);
 
-        //List<string> views = new() { "joelle.ConciergeAppAddons","ccc.vwCopyEdits", "ccc.vwRequests ", "[core].[vwUtcRequests2]" };
-        List<string> views = ViewFetcher.GetViewsNames(sourceServer.connectionString);
+        List<string> views = new() { "joelle.ConciergeAppAddons","ccc.vwCopyEdits", "ccc.vwRequests ", "[core].[vwUtcRequests2]" };
+        //List<string> views = ViewFetcher.GetViewsNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
 
@@ -177,8 +177,8 @@ public class DbComparer : DbObjectHandler
         string tablesFolderPath = Path.Combine(outputFolder, "Tables");
         Directory.CreateDirectory(tablesFolderPath);
 
-        //List<string> tables = new() {"dbo.App","dbo.Client"};
-        List<string> tables = TableFetcher.GetTablesNames(sourceServer.connectionString);
+        List<string> tables = new() {"dbo.App","dbo.Client"};
+        //List<string> tables = TableFetcher.GetTablesNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
         bool areEqual = false;
