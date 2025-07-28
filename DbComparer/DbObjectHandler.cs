@@ -24,6 +24,8 @@ public class DbObjectHandler
                                    .Replace(" ", "")
                                    .Replace("\t", "")
                                    .Replace("\n", "")
+                                   .Replace("[", "")
+                                   .Replace("]","")
                                    .Trim();
 
             byte[] inputBytes = Encoding.UTF8.GetBytes(normalized);

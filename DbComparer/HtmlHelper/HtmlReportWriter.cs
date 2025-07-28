@@ -153,11 +153,9 @@ public static class HtmlReportWriter
         <tr>
             <th></th>
             <th>{MetaData} Name</th>
-            <th>Status</th>
             <th>{source} Original</th>
             <th>{destination} Original</th>
             {differences}
-            <th>{destination} New</th>
         </tr>
     ";
     private const string BodyTemplate = @"
@@ -335,7 +333,8 @@ public static class HtmlReportWriter
         .imaginary { background-color: #eee; color: #999; }
         .modified { background-color: #fff3b0; }
         </style>
-        </head>";
+        </head>
+        <body>";
 
     #region Index Report Writer
     public static void WriteIndexSummary(string outputPath, string procIndexPath, string viewIndexPath, string tableIndexPath)
@@ -363,7 +362,7 @@ public static class HtmlReportWriter
         if (newProcedures.Any())
         {
             StringBuilder newTable = new StringBuilder();
-            newTable.AppendLine($@"<h2 style=""color: #B42A68;"">New {result.Type}s in {sourceServer.name} Database </h2>
+            newTable.AppendLine($@"<h2 style=""color: #B42A68;"">New {result.Type}s in {sourceServer.name} Database : </h2>
             <table>
                 <tr>
                     <th></th>
@@ -374,7 +373,8 @@ public static class HtmlReportWriter
             int newCount = 1;
             foreach (var item in newProcedures)
             {
-                string sourceLink = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a" : "—";
+                if (item.SourceFile == null) continue;
+                string sourceLink =$@"<a href=""{item.SourceFile}"">View</a";
                 newTable.Append($@"<tr>
                                 <td>{newCount}</td>
                                 <td>{item.Name}</td>
@@ -394,6 +394,7 @@ public static class HtmlReportWriter
 
         #region 2-Create the Comparison Table
         int Number = 1;
+        html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s :</h2>");
         foreach (var item in results)
         {
             if (item.IsDestinationEmpty) continue;
@@ -417,11 +418,9 @@ public static class HtmlReportWriter
                 html.Append($@"<tr>
                     <td>{Number}</td>
                     <td>{item.Name}</td>
-                    <td>{(item.IsEqual ? "<span class='match'>Match</span>" : "<span class='diff'>Different</span>")}</td>
                     <td>{sourceColumn}</td>
                     <td>{destinationColumn}</td>
                     {differencesColumn}
-                    <td>{newColumn}</td>
                      </tr>");
                 Number++;
             }
@@ -466,8 +465,7 @@ public static class HtmlReportWriter
 
         var html = new StringBuilder();
         html.AppendLine(DifferencesTemplate.Replace("{title}", title));
-        html.AppendLine(@$"<body>
-                        <h1>{Name}</h1>
+        html.AppendLine(@$"<h1>{Name}</h1>
                         <div class='diff-wrapper'>
                         <div class='pane'><h2>{destinationName}</h2><div class='code-block'>");
         foreach (var line in model.OldText.Lines)
@@ -486,9 +484,38 @@ public static class HtmlReportWriter
             html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
                             <div class='line-text {css}'>{System.Net.WebUtility.HtmlEncode(line.Text)}</div>");
         }
-        html.AppendLine(@"</div></div></div>
-                        </body>
-                        </html>");
+        html.AppendLine(@$"</div></div></div><br>
+                 <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
+
+                 <script>
+                 const panes = document.querySelectorAll('.pane');
+                 
+                 function syncScroll(source, target) {{
+                     target.scrollTop = source.scrollTop;
+                     target.scrollLeft = source.scrollLeft;
+                 }}
+
+                 if (panes.length === 2) {{
+                     let isSyncingScroll = false;
+
+                     panes[0].addEventListener('scroll', () => {{
+                         if (isSyncingScroll) return;
+                         isSyncingScroll = true;
+                         syncScroll(panes[0], panes[1]);
+                         isSyncingScroll = false;
+                     }});
+
+                     panes[1].addEventListener('scroll', () => {{
+                         if (isSyncingScroll) return;
+                         isSyncingScroll = true;
+                         syncScroll(panes[1], panes[0]);
+                         isSyncingScroll = false;
+                     }});
+                 }}
+                 </script>
+
+                 </body>
+                 </html>");
         File.WriteAllText(differencesPath, html.ToString());
     }
     #endregion
