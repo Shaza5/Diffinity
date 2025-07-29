@@ -403,27 +403,41 @@ public static class HtmlReportWriter
         <body>";
 
     #region Index Report Writer
+    /// <summary>
+    /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
+    /// </summary>
     public static void WriteIndexSummary(string sourceConnectionString,string destinationConnectionString, string outputPath, string procIndexPath, string viewIndexPath, string tableIndexPath)
     {
+        // Extract server and database names from connection strings
         var sourceBuilder = new SqlConnectionStringBuilder(sourceConnectionString);
         var destinationBuilder = new SqlConnectionStringBuilder(destinationConnectionString);
         string sourceServer = sourceBuilder.DataSource;
         string destinationServer = destinationBuilder.DataSource;
         string sourceDatabase = sourceBuilder.InitialCatalog;
         string destinationDatabase = destinationBuilder.InitialCatalog;
+        
         StringBuilder html = new StringBuilder();
         DateTime date = DateTime.UtcNow; ;
         string Date = date.ToString("MM/dd/yyyy hh:mm tt ") + "UTC";
+
+        // Create links to individual index pages
         string procsIndex = $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
         string viewsIndex = $@"<a href=""{viewIndexPath}"" class=""btn"">Views</a>";
         string tablesIndex = $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>";
+
+        // Replace placeholders in the index template
         html.Append(IndexTemplate.Replace("{sourceServer}",sourceServer).Replace("{sourceDatabase}", sourceDatabase).Replace("{destinationServer}", destinationServer).Replace("{destinationDatabase}", destinationDatabase).Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex).Replace("{Date}", Date));
         string indexPath = Path.Combine(outputPath, "index.html");
+
+        // Write to index.html
         File.WriteAllText(indexPath, html.ToString());
     }
     #endregion
 
     #region Summary Report Writer
+    /// <summary>
+    /// Writes a detailed summary report comparing objects (procedures, views, tables) between source and destination.
+    /// </summary>
     public static void WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<dbObjectResult> results, DbObjectFilter filter)
     {
         StringBuilder html = new();
@@ -472,9 +486,12 @@ public static class HtmlReportWriter
         foreach (var item in results)
         {
             if (item.IsDestinationEmpty) continue;
+            // Prepare file links
             string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
             string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>" : "—";
             string differencesColumn = null;
+
+            // Add differences column only if file exists
             if (item.DifferencesFile != null)
             {
                 html.Replace("{differences}", "<th>Differences</th>");
@@ -511,15 +528,20 @@ public static class HtmlReportWriter
     #endregion
 
     #region Individual Procedure Body Writer
+    /// <summary>
+    /// Writes the HTML page showing the body of a single procedure/view/table, with copy functionality.
+    /// </summary>
     public static void WriteBodyHtml(string filePath, string title, string body, string returnPage)
     {
         StringBuilder html = new StringBuilder();
         html.AppendLine(BodyTemplate.Replace("{title}", title));
         string escapedBody = EscapeHtml(body);
+        // Avoid escaping for table content
         if (title.Contains("Table"))
         {
             escapedBody = body;
         }
+        // Body content with copy button
         html.AppendLine($@"<body>
         <h1>{title}</h1>
 <div>
@@ -550,6 +572,9 @@ function copyPane(button) {{
     #endregion
 
     #region Differences Writer
+    /// <summary>
+    /// Generates a side-by-side HTML diff view for a procedure/view/table.
+    /// </summary>
     public static void DifferencesWriter(string differencesPath, string sourceName, string destinationName, string sourceBody, string destinationBody, string title, string Name, string returnPage)
     {
         var differ = new Differ();
@@ -558,6 +583,8 @@ function copyPane(button) {{
 
         var html = new StringBuilder();
         html.AppendLine(DifferencesTemplate.Replace("{title}", title));
+
+        // Destination block
         html.AppendLine(@$"<h1>{Name}</h1>
                         <div class='diff-wrapper'>
                         <div class='pane'><h2>{destinationName}</h2><div class='code-block'>");
@@ -568,6 +595,8 @@ function copyPane(button) {{
             html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
                            <div class='line-text {css}'>{System.Net.WebUtility.HtmlEncode(line.Text)}</div>");
         }
+
+        // Source block
         html.AppendLine(@$"</div></div>
                         <div class='pane'><h2>{sourceName}</h2><div class='code-block'>");
         foreach (var line in model.NewText.Lines)
@@ -577,6 +606,8 @@ function copyPane(button) {{
             html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
                             <div class='line-text {css}'>{System.Net.WebUtility.HtmlEncode(line.Text)}</div>");
         }
+
+        // Scroll sync script
         html.AppendLine(@$"</div></div></div><br>
                  <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
 
@@ -614,6 +645,9 @@ function copyPane(button) {{
     #endregion
 
     #region Helpers
+    /// <summary>
+    /// Escapes HTML special characters.
+    /// </summary>
     static string EscapeHtml(string input)
     {
         if (string.IsNullOrEmpty(input)) return string.Empty;
@@ -621,6 +655,10 @@ function copyPane(button) {{
                     .Replace("<", "&lt;")
                     .Replace(">", "&gt;");
     }
+
+    /// <summary>
+    /// Maps DiffPlex line change types to CSS class names.
+    /// </summary>
     static string GetCssClass(ChangeType type)
     {
         return type switch
@@ -632,6 +670,10 @@ function copyPane(button) {{
             _ => ""
         };
     }
+
+    /// <summary>
+    /// Prints table column details with optional difference highlighting.
+    /// </summary>
     public static string PrintTableInfo(List<tableDto> tableInfo, List<string>? differences)
     {
         StringBuilder sb = new StringBuilder();
