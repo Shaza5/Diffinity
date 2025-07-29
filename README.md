@@ -1,6 +1,6 @@
 # DbComparer
 
-DbComparer is a .NET tool designed to compare stored procedures between two SQL Server databases. It identifies differences and can optionally apply changes to synchronize the procedures. The tool generates a detailed HTML report summarizing the comparison, with links to view the source and destination procedure bodies.
+DbComparer is a C#-based application designed to compare stored procedures between two SQL Server databases. It identifies differences and can optionally apply changes to synchronize the procedures. The tool generates a detailed HTML report summarizing the comparison, with links to view the source and destination procedure bodies.
 
 ## Features
 
@@ -16,7 +16,7 @@ DbComparer is a .NET tool designed to compare stored procedures between two SQL 
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/DbComparer.git
+    git clone https://github.com/HelenNow/DbComparer.git
     cd DbComparer
     ```
 
