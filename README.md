@@ -62,18 +62,34 @@ Here is the default configuration in `Program.cs`:
 public static void Main(string[] args)
 {
     // ... (Logger configuration)
+    // ... (environment variable validation and database connection checks at startup)
 
-    var sw = new Stopwatch();
-    sw.Start();
-    DbComparer.CompareProcs(
-        new DbServer("Corewell", SourceConnectionString),
-        new DbServer("CMH", DestinationConnectionString),
-        OutputFolder,
-        ComparerAction.DoNotApplyChanges, // Set to ApplyChanges to update the destination DB
-        ProcsFilter.HideUnchangedProcs    // Set to ShowUnchangedProcs for a full report
-    );
-    sw.Stop();
-    Console.WriteLine($"Elapsed time: {sw.ElapsedMilliseconds} ms");
+        var sw = new Stopwatch();
+        sw.Start();
+        string procIndexPath = DbComparer.CompareProcs(
+            new DbServer(SourceDatabase, SourceConnectionString)
+            , new DbServer(DestinationDatabase, DestinationConnectionString)
+            , OutputFolder
+            , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
+            , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
+        );
+       string viewIndexPath = DbComparer.CompareViews(
+           new DbServer(SourceDatabase, SourceConnectionString)
+           , new DbServer(DestinationDatabase, DestinationConnectionString)
+           , OutputFolder
+           , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
+           , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
+       );
+        string tableIndexpath = DbComparer.CompareTables(
+         new DbServer(SourceDatabase, SourceConnectionString)
+         , new DbServer(DestinationDatabase, DestinationConnectionString)
+         , OutputFolder
+         , ComparerAction.DoNotApplyChanges   // Set to ApplyChanges to update the destination DB
+         , DbObjectFilter.HideUnchanged       // Set to ShowUnchangedProcs for a full report
+     );
+        HtmlReportWriter.WriteIndexSummary(SourceConnectionString,DestinationConnectionString,OutputFolder, procIndexPath, viewIndexPath, tableIndexpath);
+        sw.Stop();
+        Console.WriteLine($"Elapsed time: {sw} ms");
 }
 ```
 
