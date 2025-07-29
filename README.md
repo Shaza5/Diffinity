@@ -1,21 +1,22 @@
 # DbComparer
 
-DbComparer is a .NET tool designed to compare stored procedures between two SQL Server databases. It identifies differences and can optionally apply changes to synchronize the procedures. The tool generates a detailed HTML report summarizing the comparison, with links to view the source and destination procedure bodies.
+DbComparer is a C#-based application designed to compare stored procedures between two SQL Server databases. It identifies differences and can optionally apply changes to synchronize the procedures. The tool generates a detailed HTML report summarizing the comparison, with links to view the source and destination procedure bodies.
 
 ## Features
 
--   Compares stored procedures between two SQL Server databases.
+-   Compares stored procedures, views and tables between two SQL Server databases.
+-   Uses a hash-based comparison to detect changes efficiently.
 -   Generates an HTML summary report of the differences.
--   Provides side-by-side HTML views of the procedure bodies.
+-   Provides Side-by-side visual diffs of source and destination objects.
 -   Optionally applies changes to the destination database to match the source.
--   Filters the report to show all procedures or only those with differences.
+-   Filters the report to show all objects or only those with differences.
 -   Logs execution details to both the console and a log file.
 
 ## Installation
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/your-username/DbComparer.git
+    git clone https://github.com/HelenNow/DbComparer.git
     cd DbComparer
     ```
 
@@ -87,8 +88,15 @@ The core logic of the application is encapsulated in the `DbComparer` class and 
 This is the main class that orchestrates the comparison process.
 
 -   **`CompareProcs(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, ProcsFilter filter)`**:
-    -   Fetches all stored procedures from the source database.
-    -   Compares each procedure's body with the corresponding one in the destination database.
+    -   Compares stored procedures.
+-   **`public static string CompareViews(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)`**
+    -   Compares SQL views.
+-   **`public static string CompareTables(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)`**
+    -   Compares table definitions.
+      
+-   **`Each Method`**:
+    -   Fetches all objects from the source and destination databases.
+    -   Uses hash-based body comparison to detect changes.
     -   Optionally updates the destination procedure if differences are found.
     -   Generates a summary HTML report and individual HTML files for each procedure.
 
@@ -96,17 +104,29 @@ This is the main class that orchestrates the comparison process.
 
 This class is responsible for generating the HTML reports.
 
--   **`WriteSummaryReport(...)`**: Creates the main `index.html` file with a table summarizing the comparison results.
--   **`WriteProcedureBodyHtml(...)`**: Creates individual HTML files for viewing the body of each stored procedure.
+-   **`WriteIndexSummary(...)`**: Creates a general index HTML file linking to procedure, table, and view reports.
+-   **`WriteSummaryReport(...)`**: Generates a comparison summary page for a specific object type (e.g., procedures).
+-   **`WriteBodyHtml(...)`**: Writes a simple HTML page showing the full body of a procedure, view, or table.
+-   **`DifferencesWriter(...)`**: Generates a side-by-side diff view using the DiffPlex library highlighting differences between source and destination bodies.
 
-### `DbComparer.ProcHelper` Namespace
+### `DbComparer.ProcHelper, ViewHelper, and TableHelper` Namespaces
 
-This namespace contains classes for fetching, comparing, and updating stored procedures.
+These namespaces contain classes responsible for fetching stored procedures, views, table schemas, and performing table comparison and update operations.
 
--   **`ProcedureFetcher`**: Retrieves procedure names and bodies from the databases.
--   **`ProcedureComparer`**: Compares two procedure bodies using a hash-based approach for efficiency.
--   **`ProcedureUpdater`**: Applies changes to the destination database by executing an `ALTER PROCEDURE` statement.
--   **`HashHelper`**: Computes the hash of a string.
+-   **`Fetcher`**: Retrieves object names and bodies or schema details from both source and destination databases.
+    -   **`GetProcedureNames(...), GetViewsNames(...), GetTablesNames(...)`**: Fetch object names.
+    -   **`GetProcedureBody(...), GetViewBody(...), GetTableInfo(...)`**: Fetch object bodies or schema details.
+      
+-   **`TableComparerAndUpdater`**: Compares table schemas between source and destination and updates the destination schema to match.
+    -   **`CompareTables(...)`**: Compares column name, data type, nullability, max length, primary and foreign key flags between source and destination tables and optionally alters the destination schema to match.
+ 
+### `DbComparer.DbObjectHandler` class
+
+This class handles logic for comparing and updating database objects (procedures, views, etc.).
+
+-   **`AreBodiesEqual(...)`**: Compares two SQL object bodies by normalizing and hashing them to determine structural equality.
+-   **`AlterDbObject(...)`**: Alters or creates a database object on the destination by executing either a CREATE or an ALTER version of the source body.
+-   **`dbObjectResult (...)`** (nested class): Holds the result of comparing a source and destination object, including metadata and file paths.
 
 ## Contributing
 
