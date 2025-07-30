@@ -1,6 +1,6 @@
 # DbComparer
 
-DbComparer is a C#-based application designed to compare stored procedures between two SQL Server databases. It identifies differences and can optionally apply changes to synchronize the procedures. The tool generates a detailed HTML report summarizing the comparison, with links to view the source and destination procedure bodies.
+DbComparer is a C#-based application designed to compare database objects, such as stored procedures, views, and tables, between two SQL Server databases. It identifies differences and can optionally apply changes to synchronize the objects. The tool generates a detailed HTML report summarizing the comparison, with links to view the source and destination object definitions.
 
 ## Features
 
@@ -22,8 +22,8 @@ DbComparer is a C#-based application designed to compare stored procedures betwe
 
 2.  **Set up environment variables:**
     This project uses environment variables to store database connection strings. You need to set the following variables:
-    -   `CorewellCs`: The connection string for the source database.
-    -   `CmhCs`: The connection string for the destination database.
+    -   `sourceCs`: The connection string for the source database.
+    -   `destinationCs`: The connection string for the destination database.
 
     You can set them in your system's environment variables or create a `.env` file in the project root.
 
@@ -46,13 +46,13 @@ The application's behavior is configured directly in the `Program.cs` file. You 
 
 ### Configuration Options
 
-The `DbComparer.CompareProcs` method accepts the following parameters:
+The `DbComparer.CompareProcs, DbComparer.CompareViews, and DbComparer.CompareTables` methods accept the following parameters:
 
 -   `sourceServer`: A `DbServer` object representing the source database.
 -   `destinationServer`: A `DbServer` object representing the destination database.
 -   `outputFolder`: The directory where the HTML reports will be saved.
 -   `makeChange`: A `ComparerAction` enum that specifies whether to apply changes (`ApplyChanges`) or not (`DoNotApplyChanges`).
--   `filter`: A `ProcsFilter` enum that determines whether to include unchanged procedures in the report (`ShowUnchangedProcs`) or hide them (`HideUnchangedProcs`).
+-   `filter`: A `DbObjectFilter` enum that determines whether to include unchanged procedures in the report (`ShowUnchanged`) or hide them (`HideUnchanged`).
 
 ### Example
 
