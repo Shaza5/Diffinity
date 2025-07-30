@@ -1,5 +1,8 @@
-# Diffinity
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/b31874d5-2771-477f-a7e5-cced9af0b257" width="250" height="250" alt="Screenshot_2025-07-30_170511-removebg-preview" />
+</div>
 
+# Diffinity
 Diffinity is a C#-based application designed to compare database objects, such as stored procedures, views, and tables, between two SQL Server databases. It identifies differences and can optionally apply changes to synchronize the objects. The tool generates a detailed HTML report summarizing the comparison, with links to view the source and destination object definitions.
 
 ## Features
