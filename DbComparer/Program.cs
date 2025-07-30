@@ -7,10 +7,10 @@ namespace DbComparer;
 public class Program  
 {
     private const string OutputFolder = @"DbComparer-output";
-    static readonly string SourceDatabase = "Corewell";
-    static readonly string DestinationDatabase = "CMH";
-    static readonly string SourceConnectionString = Environment.GetEnvironmentVariable("CorewellCs");
-    static readonly string DestinationConnectionString = Environment.GetEnvironmentVariable("CmhCs");
+    static readonly string SourceDatabase = "Source";
+    static readonly string DestinationDatabase = "Destination";
+    static readonly string SourceConnectionString = Environment.GetEnvironmentVariable("sourceCs");
+    static readonly string DestinationConnectionString = Environment.GetEnvironmentVariable("destinationCs");
     public static void Main(string[] args)
     { 
         Log.Logger = new LoggerConfiguration()
@@ -22,7 +22,7 @@ public class Program
         // Check if required environment variables are set
         if (string.IsNullOrWhiteSpace(SourceConnectionString) || string.IsNullOrWhiteSpace(DestinationConnectionString))
         {
-            Console.Error.WriteLine("Error: One or both required environment variables (CorewellCs, CmhCs) are missing.");
+            Console.Error.WriteLine("Error: One or both required environment variables are missing.");
             return;
         }
 
