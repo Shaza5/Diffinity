@@ -2,6 +2,7 @@
 using DiffPlex;
 using DiffPlex.DiffBuilder;
 using DiffPlex.DiffBuilder.Model;
+using Microsoft.Data.SqlClient;
 using System.Reflection;
 using System.Text;
 using static DbComparer.DbObjectHandler;
@@ -27,10 +28,10 @@ public static class HtmlReportWriter
             background-color: #fff;
             color: #333;
         }
-        h1 {
+        h1,h2 {
             color: #EC317F;
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: 10px;
         }
         ul {
             list-style-type: none;
@@ -66,10 +67,18 @@ public static class HtmlReportWriter
         .btn:hover {
             background-color: #b42a68;
         }
+        h3{
+        color: #B42A68;
+        text-align: center;
+        margin-bottom:40px;
+        }
     </style>
 </head>
 <body>
     <h1>Database Comparison Summary</h1>
+    <h2>{sourceServer} : {sourceDatabase}</h2>
+    <h2>{destinationServer} : {destinationDatabase}</h2>
+    <h3>{Date}</h3>
     <ul>
         <li>{procsIndex}</li>
         <li>{viewsIndex}</li>
@@ -126,7 +135,39 @@ public static class HtmlReportWriter
         a:hover {
             text-decoration: underline;
         }
-  .return-btn {
+        .top-nav {
+            display: flex;
+            justify-content: center;
+            gap: 60px; /* controls spacing between links */
+            margin-bottom: 40px;
+        }
+        
+        .top-nav a {
+            position: relative;
+            color: #EC317F;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.2rem;
+            padding-bottom: 6px;
+        }
+        
+        .top-nav a::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 3px;
+            background-color: #EC317F;
+            transform: scaleX(0);
+            transform-origin: bottom left;
+            transition: transform 0.3s ease;
+        }
+        
+        .top-nav a:hover::after {
+            transform: scaleX(1);
+        }
+        .return-btn {
             display: block;
             width: 220px;
             margin: 0 auto;
@@ -148,6 +189,11 @@ public static class HtmlReportWriter
 </head>
 <body>
     <h1>{MetaData} Comparison Summary</h1>
+    <nav class=""top-nav"">
+      <a href=""../Procedures/index.html"">Procedures</a>
+      <a href=""../Views/index.html"">Views</a>
+      <a href=""../Tables/index.html"">Tables</a>
+    </nav>
     {NewTable}
     <table>
         <tr>
@@ -240,7 +286,27 @@ public static class HtmlReportWriter
         }
         .red {color: red;
     }
-
+        .copy-btn {
+            float: right;
+            margin: 0px 12px 0px 50px;
+            background-color: #EC317F;
+            color: white;
+            border: none;
+            font-size : 15px;
+            padding: 10px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
+        }
+        .copy-btn:hover {
+              background-color: #b42a68;
+        }
+        .use{
+            color: #EC317F;
+            font-weight : bold;
+            float: left;
+            font-size: 20px
+        }
         .return-btn:hover {
             background-color: #b42a68;
         }
@@ -337,19 +403,41 @@ public static class HtmlReportWriter
         <body>";
 
     #region Index Report Writer
-    public static void WriteIndexSummary(string outputPath, string procIndexPath, string viewIndexPath, string tableIndexPath)
+    /// <summary>
+    /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
+    /// </summary>
+    public static void WriteIndexSummary(string sourceConnectionString,string destinationConnectionString, string outputPath, string procIndexPath, string viewIndexPath, string tableIndexPath)
     {
+        // Extract server and database names from connection strings
+        var sourceBuilder = new SqlConnectionStringBuilder(sourceConnectionString);
+        var destinationBuilder = new SqlConnectionStringBuilder(destinationConnectionString);
+        string sourceServer = sourceBuilder.DataSource;
+        string destinationServer = destinationBuilder.DataSource;
+        string sourceDatabase = sourceBuilder.InitialCatalog;
+        string destinationDatabase = destinationBuilder.InitialCatalog;
+        
         StringBuilder html = new StringBuilder();
+        DateTime date = DateTime.UtcNow; ;
+        string Date = date.ToString("MM/dd/yyyy hh:mm tt ") + "UTC";
+
+        // Create links to individual index pages
         string procsIndex = $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
         string viewsIndex = $@"<a href=""{viewIndexPath}"" class=""btn"">Views</a>";
         string tablesIndex = $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>";
-        html.Append(IndexTemplate.Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex));
+
+        // Replace placeholders in the index template
+        html.Append(IndexTemplate.Replace("{sourceServer}",sourceServer).Replace("{sourceDatabase}", sourceDatabase).Replace("{destinationServer}", destinationServer).Replace("{destinationDatabase}", destinationDatabase).Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex).Replace("{Date}", Date));
         string indexPath = Path.Combine(outputPath, "index.html");
+
+        // Write to index.html
         File.WriteAllText(indexPath, html.ToString());
     }
     #endregion
 
     #region Summary Report Writer
+    /// <summary>
+    /// Writes a detailed summary report comparing objects (procedures, views, tables) between source and destination.
+    /// </summary>
     public static void WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<dbObjectResult> results, DbObjectFilter filter)
     {
         StringBuilder html = new();
@@ -374,7 +462,7 @@ public static class HtmlReportWriter
             foreach (var item in newProcedures)
             {
                 if (item.SourceFile == null) continue;
-                string sourceLink =$@"<a href=""{item.SourceFile}"">View</a";
+                string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
                 newTable.Append($@"<tr>
                                 <td>{newCount}</td>
                                 <td>{item.Name}</td>
@@ -398,9 +486,12 @@ public static class HtmlReportWriter
         foreach (var item in results)
         {
             if (item.IsDestinationEmpty) continue;
+            // Prepare file links
             string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
             string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>" : "—";
             string differencesColumn = null;
+
+            // Add differences column only if file exists
             if (item.DifferencesFile != null)
             {
                 html.Replace("{differences}", "<th>Differences</th>");
@@ -437,18 +528,42 @@ public static class HtmlReportWriter
     #endregion
 
     #region Individual Procedure Body Writer
+    /// <summary>
+    /// Writes the HTML page showing the body of a single procedure/view/table, with copy functionality.
+    /// </summary>
     public static void WriteBodyHtml(string filePath, string title, string body, string returnPage)
     {
         StringBuilder html = new StringBuilder();
         html.AppendLine(BodyTemplate.Replace("{title}", title));
         string escapedBody = EscapeHtml(body);
+        // Avoid escaping for table content
         if (title.Contains("Table"))
         {
             escapedBody = body;
         }
+        // Body content with copy button
         html.AppendLine($@"<body>
-            <h1>{title}</h1>
-            <div>{escapedBody}</div>
+        <h1>{title}</h1>
+<div>
+<span class=""use"">Use {title}</span> <button class='copy-btn' onclick='copyPane(this)'>Copy</button><br>
+<span class=""copy-target"">{escapedBody}</span>
+</div>
+
+      <script>
+function copyPane(button) {{
+    const container = button.closest('div');
+    const codeBlock = container.querySelector('.copy-target');
+    const text = codeBlock?.innerText.trim();
+
+    navigator.clipboard.writeText(text).then(() => {{
+        button.textContent = 'Copied!';
+        setTimeout(() => button.textContent = 'Copy', 2000);
+    }}).catch(err => {{
+        console.error('Copy failed:', err);
+        alert('Failed to copy!');
+    }});
+}}
+</script>
             <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
             </body>
             </html>");
@@ -457,6 +572,9 @@ public static class HtmlReportWriter
     #endregion
 
     #region Differences Writer
+    /// <summary>
+    /// Generates a side-by-side HTML diff view for a procedure/view/table.
+    /// </summary>
     public static void DifferencesWriter(string differencesPath, string sourceName, string destinationName, string sourceBody, string destinationBody, string title, string Name, string returnPage)
     {
         var differ = new Differ();
@@ -465,6 +583,8 @@ public static class HtmlReportWriter
 
         var html = new StringBuilder();
         html.AppendLine(DifferencesTemplate.Replace("{title}", title));
+
+        // Destination block
         html.AppendLine(@$"<h1>{Name}</h1>
                         <div class='diff-wrapper'>
                         <div class='pane'><h2>{destinationName}</h2><div class='code-block'>");
@@ -475,6 +595,8 @@ public static class HtmlReportWriter
             html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
                            <div class='line-text {css}'>{System.Net.WebUtility.HtmlEncode(line.Text)}</div>");
         }
+
+        // Source block
         html.AppendLine(@$"</div></div>
                         <div class='pane'><h2>{sourceName}</h2><div class='code-block'>");
         foreach (var line in model.NewText.Lines)
@@ -484,6 +606,8 @@ public static class HtmlReportWriter
             html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
                             <div class='line-text {css}'>{System.Net.WebUtility.HtmlEncode(line.Text)}</div>");
         }
+
+        // Scroll sync script
         html.AppendLine(@$"</div></div></div><br>
                  <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
 
@@ -521,6 +645,9 @@ public static class HtmlReportWriter
     #endregion
 
     #region Helpers
+    /// <summary>
+    /// Escapes HTML special characters.
+    /// </summary>
     static string EscapeHtml(string input)
     {
         if (string.IsNullOrEmpty(input)) return string.Empty;
@@ -528,6 +655,10 @@ public static class HtmlReportWriter
                     .Replace("<", "&lt;")
                     .Replace(">", "&gt;");
     }
+
+    /// <summary>
+    /// Maps DiffPlex line change types to CSS class names.
+    /// </summary>
     static string GetCssClass(ChangeType type)
     {
         return type switch
@@ -539,6 +670,10 @@ public static class HtmlReportWriter
             _ => ""
         };
     }
+
+    /// <summary>
+    /// Prints table column details with optional difference highlighting.
+    /// </summary>
     public static string PrintTableInfo(List<tableDto> tableInfo, List<string>? differences)
     {
         StringBuilder sb = new StringBuilder();

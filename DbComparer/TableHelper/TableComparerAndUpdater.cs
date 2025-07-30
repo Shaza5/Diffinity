@@ -4,6 +4,9 @@ using Microsoft.Data.SqlClient;
 namespace DbComparer.TableHelper;
 public static class TableComparerAndUpdater
 {
+    /// <summary>
+    /// Compares two table column definitions and optionally updates the destination schema to match the source.
+    /// </summary>
     public static (bool, List<string>) ComparerAndUpdater(string destinationConnectionString, tableDto sourceTable, tableDto destinationTable, string fullTableName, ComparerAction makeChange)
     {
         using SqlConnection destinationConnection = new SqlConnection(destinationConnectionString);
