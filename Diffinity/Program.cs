@@ -6,7 +6,7 @@ using System.Diagnostics;
 namespace DbComparer;
 public class Program  
 {
-    private const string OutputFolder = @"DbComparer-output";
+    private const string OutputFolder = @"Diffinity-output";
     static readonly string SourceDatabase = "Source";
     static readonly string DestinationDatabase = "Destination";
     static readonly string SourceConnectionString = Environment.GetEnvironmentVariable("sourceCs");
