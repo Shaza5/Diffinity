@@ -1,6 +1,6 @@
-# DbComparer
+# Diffinity
 
-DbComparer is a C#-based application designed to compare database objects, such as stored procedures, views, and tables, between two SQL Server databases. It identifies differences and can optionally apply changes to synchronize the objects. The tool generates a detailed HTML report summarizing the comparison, with links to view the source and destination object definitions.
+Diffinity is a C#-based application designed to compare database objects, such as stored procedures, views, and tables, between two SQL Server databases. It identifies differences and can optionally apply changes to synchronize the objects. The tool generates a detailed HTML report summarizing the comparison, with links to view the source and destination object definitions.
 
 ## Features
 
@@ -15,14 +15,12 @@ DbComparer is a C#-based application designed to compare database objects, such 
 ## Side by Side Visual Diffs 
 <img width="1678" height="862" alt="image (4)" src="https://github.com/user-attachments/assets/620f8bee-db41-447d-9392-d79a1687ebc0" />
 
-
-
 ## Installation
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/HelenNow/DbComparer.git
-    cd DbComparer
+    git clone https://github.com/HelenNow/Diffinity
+    cd Diffinity
     ```
 
 2.  **Set up environment variables:**
@@ -40,10 +38,10 @@ DbComparer is a C#-based application designed to compare database objects, such 
 
 ## Usage
 
-To run the application, you can use the `dotnet run` command from the `DbComparer` project directory:
+To run the application, you can use the `dotnet run` command from the `Diffinity` project directory:
 
 ```bash
-cd DbComparer
+cd Diffinity
 dotnet run
 ```
 
@@ -51,7 +49,7 @@ The application's behavior is configured directly in the `Program.cs` file. You 
 
 ### Configuration Options
 
-The `DbComparer.CompareProcs, DbComparer.CompareViews, and DbComparer.CompareTables` methods accept the following parameters:
+The `Diffinity.CompareProcs, CompareViews and CompareTables` methods accept the following parameters:
 
 -   `sourceServer`: A `DbServer` object representing the source database.
 -   `destinationServer`: A `DbServer` object representing the destination database.
@@ -71,21 +69,21 @@ public static void Main(string[] args)
 
         var sw = new Stopwatch();
         sw.Start();
-        string procIndexPath = DbComparer.CompareProcs(
+        string procIndexPath = Diffinity.CompareProcs(
             new DbServer(SourceDatabase, SourceConnectionString)
             , new DbServer(DestinationDatabase, DestinationConnectionString)
             , OutputFolder
             , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
             , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
         );
-       string viewIndexPath = DbComparer.CompareViews(
+       string viewIndexPath = Diffinity.CompareViews(
            new DbServer(SourceDatabase, SourceConnectionString)
            , new DbServer(DestinationDatabase, DestinationConnectionString)
            , OutputFolder
            , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
            , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
        );
-        string tableIndexpath = DbComparer.CompareTables(
+        string tableIndexpath = Diffinity.CompareTables(
          new DbServer(SourceDatabase, SourceConnectionString)
          , new DbServer(DestinationDatabase, DestinationConnectionString)
          , OutputFolder
@@ -98,13 +96,13 @@ public static void Main(string[] args)
 }
 ```
 
-The HTML report is generated in the `DbComparer-output` folder by default.
+The HTML report is generated in the `Diffinity-output` folder by default.
 
 ## API Documentation
 
-The core logic of the application is encapsulated in the `DbComparer` class and its helpers.
+The core logic of the application is encapsulated in the `Diffinity` class and its helpers.
 
-### `DbComparer.DbComparer` class
+### `Diffinity.DbComparer` class
 
 This is the main class that orchestrates the comparison process.
 
@@ -121,7 +119,7 @@ This is the main class that orchestrates the comparison process.
     -   Optionally updates the destination procedure if differences are found.
     -   Generates a summary HTML report and individual HTML files for each procedure.
 
-### `DbComparer.HtmlHelper.HtmlReportWriter` class
+### `Diffinity.HtmlHelper.HtmlReportWriter` class
 
 This class is responsible for generating the HTML reports.
 
@@ -130,7 +128,7 @@ This class is responsible for generating the HTML reports.
 -   **`WriteBodyHtml(...)`**: Writes a simple HTML page showing the full body of a procedure, view, or table.
 -   **`DifferencesWriter(...)`**: Generates a side-by-side diff view using the DiffPlex library highlighting differences between source and destination bodies.
 
-### `DbComparer.ProcHelper, ViewHelper, and TableHelper` Namespaces
+### `Diffinity.ProcHelper, ViewHelper and TableHelper` Namespaces
 
 These namespaces contain classes responsible for fetching stored procedures, views, table schemas, and performing table comparison and update operations.
 
@@ -141,7 +139,7 @@ These namespaces contain classes responsible for fetching stored procedures, vie
 -   **`TableComparerAndUpdater`**: Compares table schemas between source and destination and updates the destination schema to match.
     -   **`CompareTables(...)`**: Compares column name, data type, nullability, max length, primary and foreign key flags between source and destination tables and optionally alters the destination schema to match.
  
-### `DbComparer.DbObjectHandler` class
+### `Diffinity.DbObjectHandler` class
 
 This class handles logic for comparing and updating database objects (procedures, views, etc.).
 
