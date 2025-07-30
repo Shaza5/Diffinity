@@ -12,6 +12,10 @@ DbComparer is a C#-based application designed to compare database objects, such 
 -   Filters the report to show all objects or only those with differences.
 -   Logs execution details to both the console and a log file.
 
+## Side by Side Visual Diffs 
+<img width="1683" height="860" alt="image (3)" src="https://github.com/user-attachments/assets/8d111305-fd4d-47d0-91a7-9be5a7556760" />
+
+
 ## Installation
 
 1.  **Clone the repository:**
