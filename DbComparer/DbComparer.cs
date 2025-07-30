@@ -31,7 +31,7 @@ public class DbComparer : DbObjectHandler
         Directory.CreateDirectory(proceduresFolderPath);
 
         // Step 2 - Retrieve procedure names from the source server
-        //List<string> procedures = new() { "joelle.rePopulateCommandBags","ccc.spCreateConcierge","temporary.test1", "temporary.test2", "adminapp.spAvgRequestsCompletedPerHourPerConcierge" };
+        //List<string> procedures = new() { "temporary.GenerateCustomerOrderReport","joelle.rePopulateCommandBags","ccc.spCreateConcierge","temporary.test1", "temporary.test2", "adminapp.spAvgRequestsCompletedPerHourPerConcierge" };
         List<string> procedures = ProcedureFetcher.GetProcedureNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
