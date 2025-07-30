@@ -3,6 +3,7 @@ using DiffPlex;
 using DiffPlex.DiffBuilder;
 using DiffPlex.DiffBuilder.Model;
 using Microsoft.Data.SqlClient;
+using ColorCode;
 using System.Reflection;
 using System.Text;
 using static DbComparer.DbObjectHandler;
@@ -344,7 +345,7 @@ public static class HtmlReportWriter
             background-color: #f9f9f9;
             padding: 0;
             border-radius: 8px;
-            overflow: auto;
+            overflow: hidden;
             height: 650px;
             border: 1px solid #ddd;
             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
@@ -360,6 +361,10 @@ public static class HtmlReportWriter
         }
         .code-block {
             display: grid;
+            overflow:auto;
+            overflow-x: auto;
+            scrollbar-gutter: stable both-edges;
+            height: 650px;
             grid-template-columns: 50px 1fr;
             font-size: 0.95rem;
             line-height: 1.4;
@@ -372,9 +377,9 @@ public static class HtmlReportWriter
             user-select: none;
         }
         .line-text {
-            font-family: Consolas;
-            white-space: pre;
-            overflow-wrap: break-word;
+             white-space: pre;        
+             font-family: Consolas;
+             overflow-wrap: break-word;      
         }
        .return-btn {
             display: block;
@@ -541,12 +546,13 @@ public static class HtmlReportWriter
         {
             escapedBody = body;
         }
+        string coloredCode = HighlightSql(escapedBody);
         // Body content with copy button
         html.AppendLine($@"<body>
         <h1>{title}</h1>
 <div>
 <span class=""use"">Use {title}</span> <button class='copy-btn' onclick='copyPane(this)'>Copy</button><br>
-<span class=""copy-target"">{escapedBody}</span>
+<span class=""copy-target"">{coloredCode}</span>
 </div>
 
       <script>
@@ -578,8 +584,10 @@ function copyPane(button) {{
     public static void DifferencesWriter(string differencesPath, string sourceName, string destinationName, string sourceBody, string destinationBody, string title, string Name, string returnPage)
     {
         var differ = new Differ();
+        string[] sourceBodyColored = HighlightSql(sourceBody).Split("\n");
+        string[] destinationBodyColored = HighlightSql(destinationBody).Split("\n");
         var sideBySideBuilder = new SideBySideDiffBuilder(differ);
-        var model = sideBySideBuilder.BuildDiffModel(destinationBody, sourceBody);
+        var model = sideBySideBuilder.BuildDiffModel(string.Join("\n", destinationBodyColored), string.Join("\n",sourceBodyColored));
 
         var html = new StringBuilder();
         html.AppendLine(DifferencesTemplate.Replace("{title}", title));
@@ -593,7 +601,7 @@ function copyPane(button) {{
             string css = GetCssClass(line.Type);
             string lineNumber = line.Position == 0 ? "" : line.Position.ToString();
             html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
-                           <div class='line-text {css}'>{System.Net.WebUtility.HtmlEncode(line.Text)}</div>");
+                           <div class='line-text {css}'>{line.Text}</div>");
         }
 
         // Source block
@@ -604,7 +612,7 @@ function copyPane(button) {{
             string css = GetCssClass(line.Type);
             string lineNumber = line.Position == 0 ? "" : line.Position.ToString();
             html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
-                            <div class='line-text {css}'>{System.Net.WebUtility.HtmlEncode(line.Text)}</div>");
+                            <div class='line-text {css}'>{line.Text}</div>");
         }
 
         // Scroll sync script
@@ -612,27 +620,27 @@ function copyPane(button) {{
                  <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
 
                  <script>
-                 const panes = document.querySelectorAll('.pane');
+                 const blocks = document.querySelectorAll('.code-block');
                  
                  function syncScroll(source, target) {{
                      target.scrollTop = source.scrollTop;
                      target.scrollLeft = source.scrollLeft;
                  }}
 
-                 if (panes.length === 2) {{
+                 if (blocks.length === 2) {{
                      let isSyncingScroll = false;
 
-                     panes[0].addEventListener('scroll', () => {{
+                     blocks[0].addEventListener('scroll', () => {{
                          if (isSyncingScroll) return;
                          isSyncingScroll = true;
-                         syncScroll(panes[0], panes[1]);
+                         syncScroll(blocks[0], blocks[1]);
                          isSyncingScroll = false;
                      }});
 
-                     panes[1].addEventListener('scroll', () => {{
+                     blocks[1].addEventListener('scroll', () => {{
                          if (isSyncingScroll) return;
                          isSyncingScroll = true;
-                         syncScroll(panes[1], panes[0]);
+                         syncScroll(blocks[1], blocks[0]);
                          isSyncingScroll = false;
                      }});
                  }}
@@ -669,6 +677,16 @@ function copyPane(button) {{
             ChangeType.Modified => "modified",
             _ => ""
         };
+    }
+
+    /// <summary>
+    /// Highlights SQL source code by applying syntax coloring for display purposes.
+    /// </summary>
+    static string HighlightSql(string sqlCode)
+    {
+        var colorizer = new CodeColorizer();
+        string coloredCode=colorizer.Colorize(sqlCode, Languages.Sql).Replace(@"<div style=""color:Black;background-color:White;""><pre>", "").Replace("</div>", "");
+        return coloredCode;
     }
 
     /// <summary>
