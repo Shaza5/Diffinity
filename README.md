@@ -179,4 +179,6 @@ The `Program.cs` file contains a detailed to-do list with plans for future enhan
 
 Feel free to pick an item from the to-do list if you're looking for a place to start contributing!
 
-Developed with :sparkling_heart: in Lebanon
+<div align="center">
+  <sub><strong>Developed with :sparkling_heart: in Lebanon</strong></sub>
+</div>
