@@ -177,3 +177,5 @@ The `Program.cs` file contains a detailed to-do list with plans for future enhan
 -   Extending the tool to support more complex comparison scenarios.
 
 Feel free to pick an item from the to-do list if you're looking for a place to start contributing!
+
+Developed with :sparkling_heart: in Lebanon
