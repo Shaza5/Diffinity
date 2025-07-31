@@ -359,17 +359,19 @@ public static class HtmlReportWriter
             text-align: center;
             font-size: 1rem;
         }
+       .code-scroll {
+            height: 585px;
+            overflow: auto; 
+        }
         .code-block {
             display: grid;
-            overflow:auto;
-            height: auto;
-            max-height: 585px;
-            font-size: 0.95rem;
             grid-template-columns: 50px 1fr;
+            font-size: 0.95rem;
             line-height: 1.4;
             padding: 10px;
-            white-space:pre;
-         }
+            white-space: pre;
+            width: fit-content; 
+        }
          .line-number {
              color: #999;
              text-align: right;
@@ -595,7 +597,7 @@ public static class HtmlReportWriter
         // Destination block
         html.AppendLine(@$"<h1>{Name}</h1>
                         <div class='diff-wrapper'>
-                        <div class='pane'><h2>{destinationName}</h2><div class='code-block'>");
+                        <div class='pane'><h2>{destinationName}</h2><div class=""code-scroll""><div class='code-block'>");
         foreach (var line in model.OldText.Lines)
         {
             string css = GetCssClass(line.Type);
@@ -605,8 +607,8 @@ public static class HtmlReportWriter
         }
 
         // Source block
-        html.AppendLine(@$"</div></div>
-                        <div class='pane'><h2>{sourceName}</h2><div class='code-block'>");
+        html.AppendLine(@$"</div></div></div>
+                        <div class='pane'><h2>{sourceName}</h2><div class=""code-scroll""><div class='code-block'>");
         foreach (var line in model.NewText.Lines)
         {
             string css = GetCssClass(line.Type);
@@ -616,11 +618,11 @@ public static class HtmlReportWriter
         }
 
         // Scroll sync script
-        html.AppendLine(@$"</div></div></div><br>
+        html.AppendLine(@$"</div></div></div></div><br>
                  <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
 
                  <script>
-                 const blocks = document.querySelectorAll('.code-block');
+                 const blocks = document.querySelectorAll('.code-scroll');
                  
                  function syncScroll(source, target) {{
                      target.scrollTop = source.scrollTop;

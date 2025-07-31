@@ -13,7 +13,7 @@
 		<PackageId>Diffinity</PackageId>
 		<Version>1.0.0</Version>
 		<Authors>Najat Bdeir;Nada Husseini</Authors>
-		<Description>Comparing and optionally updating two sql server databases</Description>
+		<Description>Compare SQL Server procedures, views, and tables. Detect changes, optionally sync databases, and generate HTML reports. Built for integration and automation.</Description>
 		<PackageTags>csharp;sql;diff;comparison;database;schema</PackageTags>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
 		<RepositoryUrl>https://github.com/HelenNow/Diffinity</RepositoryUrl>
