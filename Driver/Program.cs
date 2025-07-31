@@ -1,10 +1,11 @@
-﻿using DbComparer.HtmlHelper;
-using Microsoft.Data.SqlClient;
+﻿using Microsoft.Data.SqlClient;
 using Serilog;
+using Diffinity;
 using System.Diagnostics;
+using Diffinity.HtmlHelper;
 
-namespace DbComparer;
-public class Program  
+namespace Driver;
+public class Program
 {
     private const string OutputFolder = @"Diffinity-output";
     static readonly string SourceDatabase = "Source";
@@ -12,7 +13,7 @@ public class Program
     static readonly string SourceConnectionString = Environment.GetEnvironmentVariable("sourceCs");
     static readonly string DestinationConnectionString = Environment.GetEnvironmentVariable("destinationCs");
     public static void Main(string[] args)
-    { 
+    {
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
             .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
@@ -53,30 +54,33 @@ public class Program
         }
         #endregion
 
+        DbServer sourceDb = new DbServer(SourceDatabase, SourceConnectionString);
+        DbServer destinationDb = new DbServer(DestinationDatabase, DestinationConnectionString);
+
         var sw = new Stopwatch();
         sw.Start();
         string procIndexPath = DbComparer.CompareProcs(
-            new DbServer(SourceDatabase, SourceConnectionString)
-            , new DbServer(DestinationDatabase, DestinationConnectionString)
+            sourceDb
+            , destinationDb
             , OutputFolder
             , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
             , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
         );
-       string viewIndexPath = DbComparer.CompareViews(
-           new DbServer(SourceDatabase, SourceConnectionString)
-           , new DbServer(DestinationDatabase, DestinationConnectionString)
-           , OutputFolder
-           , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
-           , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
-       );
+        string viewIndexPath = DbComparer.CompareViews(
+            sourceDb
+            , destinationDb
+            , OutputFolder
+            , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
+            , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
+        );
         string tableIndexpath = DbComparer.CompareTables(
-         new DbServer(SourceDatabase, SourceConnectionString)
-         , new DbServer(DestinationDatabase, DestinationConnectionString)
+         sourceDb
+         , destinationDb
          , OutputFolder
          , ComparerAction.DoNotApplyChanges   // Set to ApplyChanges to update the destination DB
          , DbObjectFilter.HideUnchanged       // Set to ShowUnchangedProcs for a full report
      );
-        HtmlReportWriter.WriteIndexSummary(SourceConnectionString,DestinationConnectionString,OutputFolder, procIndexPath, viewIndexPath, tableIndexpath);
+        HtmlReportWriter.WriteIndexSummary(SourceConnectionString, DestinationConnectionString, OutputFolder, procIndexPath, viewIndexPath, tableIndexpath);
         sw.Stop();
         Console.WriteLine($"Elapsed time: {sw} ms");
     }

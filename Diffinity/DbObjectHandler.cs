@@ -3,7 +3,7 @@ using Microsoft.Data.SqlClient;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace DbComparer;
+namespace Diffinity;
 
 public class DbObjectHandler
 {

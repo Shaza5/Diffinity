@@ -1,10 +1,10 @@
-﻿using DbComparer.HtmlHelper;
-using DbComparer.ProcHelper;
-using DbComparer.TableHelper;
-using DbComparer.ViewHelper;
+﻿using Diffinity.HtmlHelper;
+using Diffinity.ProcHelper;
+using Diffinity.TableHelper;
+using Diffinity.ViewHelper;
 using Microsoft.IdentityModel.Tokens;
 
-namespace DbComparer;
+namespace Diffinity;
 public enum ComparerAction
 {
     ApplyChanges,
@@ -31,7 +31,6 @@ public class DbComparer : DbObjectHandler
         Directory.CreateDirectory(proceduresFolderPath);
 
         // Step 2 - Retrieve procedure names from the source server
-        //List<string> procedures = new() { "temporary.GenerateCustomerOrderReport","joelle.rePopulateCommandBags","ccc.spCreateConcierge","temporary.test1", "temporary.test2", "adminapp.spAvgRequestsCompletedPerHourPerConcierge" };
         List<string> procedures = ProcedureFetcher.GetProcedureNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
@@ -124,7 +123,6 @@ public class DbComparer : DbObjectHandler
         Directory.CreateDirectory(viewsFolderPath);
 
         // Step 2 - Retrieve view names from the source server
-        //List<string> views = new() { "joelle.ConciergeAppAddons","ccc.vwCopyEdits", "ccc.vwRequests ", "[core].[vwUtcRequests2]" };
         List<string> views = ViewFetcher.GetViewsNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
@@ -217,7 +215,6 @@ public class DbComparer : DbObjectHandler
         Directory.CreateDirectory(tablesFolderPath);
 
         // Step 2 - Retrieve table names from the source server
-        //List<string> tables = new() {"dbo.App","dbo.Client"};
         List<string> tables = TableFetcher.GetTablesNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();

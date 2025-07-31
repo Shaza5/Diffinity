@@ -1,4 +1,4 @@
-﻿using DbComparer.TableHelper;
+﻿using Diffinity.TableHelper;
 using DiffPlex;
 using DiffPlex.DiffBuilder;
 using DiffPlex.DiffBuilder.Model;
@@ -6,11 +6,11 @@ using Microsoft.Data.SqlClient;
 using ColorCode;
 using System.Reflection;
 using System.Text;
-using static DbComparer.DbObjectHandler;
+using static Diffinity.DbObjectHandler;
 
 
 
-namespace DbComparer.HtmlHelper;
+namespace Diffinity.HtmlHelper;
 
 public static class HtmlReportWriter
 {
@@ -362,25 +362,25 @@ public static class HtmlReportWriter
         .code-block {
             display: grid;
             overflow:auto;
-            overflow-x: auto;
-            scrollbar-gutter: stable both-edges;
-            height: 650px;
-            grid-template-columns: 50px 1fr;
+            height: auto;
+            max-height: 585px;
             font-size: 0.95rem;
+            grid-template-columns: 50px 1fr;
             line-height: 1.4;
             padding: 10px;
-        }
-        .line-number {
-            color: #999;
-            text-align: right;
-            padding-right: 10px;
-            user-select: none;
-        }
-        .line-text {
-             white-space: pre;        
-             font-family: Consolas;
-             overflow-wrap: break-word;      
-        }
+            white-space:pre;
+         }
+         .line-number {
+             color: #999;
+             text-align: right;
+             padding-right: 10px;
+             user-select: none;
+         }
+         .line-text {
+              white-space: pre;        
+              font-family: Consolas;
+              overflow-wrap: break-word;
+         }
        .return-btn {
             display: block;
             width: 220px;
@@ -541,35 +541,35 @@ public static class HtmlReportWriter
         StringBuilder html = new StringBuilder();
         html.AppendLine(BodyTemplate.Replace("{title}", title));
         string escapedBody = EscapeHtml(body);
-        // Avoid escaping for table content
+
         if (title.Contains("Table"))
         {
             escapedBody = body;
         }
         string coloredCode = HighlightSql(escapedBody);
-        // Body content with copy button
+
         html.AppendLine($@"<body>
         <h1>{title}</h1>
-<div>
-<span class=""use"">Use {title}</span> <button class='copy-btn' onclick='copyPane(this)'>Copy</button><br>
-<span class=""copy-target"">{coloredCode}</span>
-</div>
-
-      <script>
-function copyPane(button) {{
-    const container = button.closest('div');
-    const codeBlock = container.querySelector('.copy-target');
-    const text = codeBlock?.innerText.trim();
-
-    navigator.clipboard.writeText(text).then(() => {{
-        button.textContent = 'Copied!';
-        setTimeout(() => button.textContent = 'Copy', 2000);
-    }}).catch(err => {{
-        console.error('Copy failed:', err);
-        alert('Failed to copy!');
-    }});
-}}
-</script>
+            <div>
+            <span class=""use"">Use {title}</span> <button class='copy-btn' onclick='copyPane(this)'>Copy</button><br>
+            <span class=""copy-target"">{coloredCode}</span>
+            </div>
+            
+                  <script>
+            function copyPane(button) {{
+                const container = button.closest('div');
+                const codeBlock = container.querySelector('.copy-target');
+                const text = codeBlock?.innerText.trim();
+            
+                navigator.clipboard.writeText(text).then(() => {{
+                    button.textContent = 'Copied!';
+                    setTimeout(() => button.textContent = 'Copy', 2000);
+                }}).catch(err => {{
+                    console.error('Copy failed:', err);
+                    alert('Failed to copy!');
+                }});
+            }}
+            </script>
             <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
             </body>
             </html>");
