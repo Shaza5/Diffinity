@@ -360,7 +360,7 @@ public static class HtmlReportWriter
             font-size: 1rem;
         }
        .code-scroll {
-            height: 585px;
+            height: 605px;
             overflow: auto; 
         }
         .code-block {
