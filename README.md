@@ -3,7 +3,9 @@
 </div>
 
 # Diffinity
-Diffinity is a C#-based application designed to compare database objects, such as stored procedures, views, and tables, between two SQL Server databases. It identifies differences and can optionally apply changes to synchronize the objects. The tool generates a detailed HTML report summarizing the comparison, with links to view the source and destination object definitions.
+Diffinity is a C# library and NuGet package for comparing database objects—such as stored procedures, views, and tables, between two SQL Server databases. It identifies differences and optionally applies changes to synchronize the objects. The library also supports generating detailed HTML reports summarizing the comparison, including links to view the source and destination definitions.
+
+Diffinity can be used as a standalone library in your own applications or through the included console driver (Driver) for out-of-the-box functionality.
 
 ## Features
 
@@ -18,7 +20,16 @@ Diffinity is a C#-based application designed to compare database objects, such a
 ## Side by Side Visual Diffs 
 <img width="1678" height="862" alt="image (4)" src="https://github.com/user-attachments/assets/620f8bee-db41-447d-9392-d79a1687ebc0" />
 
-## Installation
+## Getting Started
+### Option 1: Use the NuGet Package
+
+Install the Diffinity library into your own project:
+
+```bash
+dotnet add package Diffinity
+```
+
+### Option 2: Use the Console App (Driver)
 
 1.  **Clone the repository:**
     ```bash
@@ -33,22 +44,122 @@ Diffinity is a C#-based application designed to compare database objects, such a
 
     You can set them in your system's environment variables or create a `.env` file in the project root.
 
-3.  **Build the project:**
+3.  **Build and run:**
     Open the solution in Visual Studio and build the project, or use the `dotnet` CLI:
     ```bash
     dotnet build
+    dotnet run --project Driver
     ```
+The application's behavior is configured directly in the `Program.cs` file. You can modify the `Main` method to change the comparison options.
 
 ## Usage
+### Example Usage of the Library
 
-To run the application, you can use the `dotnet run` command from the `Diffinity` project directory:
+```csharp
+using Diffinity;
 
-```bash
-cd Diffinity
-dotnet run
+var result = DbComparer.CompareProcs(
+    new DbServer("Source", sourceCs),
+    new DbServer("Dest", destinationCs),
+    "output-folder",
+    ComparerAction.DoNotApplyChanges,
+    DbObjectFilter.ShowUnchanged
+);
 ```
+### Example Usage of the Console Driver
 
-The application's behavior is configured directly in the `Program.cs` file. You can modify the `Main` method to change the comparison options.
+Here is the default configuration in `Program.cs`:
+
+```csharp
+using Microsoft.Data.SqlClient;
+using Serilog;
+using Diffinity;
+using System.Diagnostics;
+using Diffinity.HtmlHelper;
+
+namespace Driver;
+public class Program
+{
+    private const string OutputFolder = @"Diffinity-output";
+    static readonly string SourceDatabase = "Source";
+    static readonly string DestinationDatabase = "Destination";
+    static readonly string SourceConnectionString = Environment.GetEnvironmentVariable("sourceCs");
+    static readonly string DestinationConnectionString = Environment.GetEnvironmentVariable("destinationCs");
+    public static void Main(string[] args)
+    {
+        Log.Logger = new LoggerConfiguration()
+            .WriteTo.Console()
+            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+
+        #region environment variable validation and database connection checks at startup
+        // Check if required environment variables are set
+        if (string.IsNullOrWhiteSpace(SourceConnectionString) || string.IsNullOrWhiteSpace(DestinationConnectionString))
+        {
+            Console.Error.WriteLine("Error: One or both required environment variables are missing.");
+            return;
+        }
+
+        // Attempt to connect to the source database
+        try
+        {
+            using var sourceConn = new SqlConnection(SourceConnectionString);
+            sourceConn.Open();
+            Console.WriteLine("Connected to source database.");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("Failed to connect to source database: " + ex.Message);
+            return;
+        }
+
+        // Attempt to connect to the destination database
+        try
+        {
+            using var destConn = new SqlConnection(DestinationConnectionString);
+            destConn.Open();
+            Console.WriteLine("Connected to destination database.");
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine("Failed to connect to destination database: " + ex.Message);
+            return;
+        }
+        #endregion
+
+        DbServer sourceDb = new DbServer(SourceDatabase, SourceConnectionString);
+        DbServer destinationDb = new DbServer(DestinationDatabase, DestinationConnectionString);
+
+        var sw = new Stopwatch();
+        sw.Start();
+        string procIndexPath = DbComparer.CompareProcs(
+            sourceDb
+            , destinationDb
+            , OutputFolder
+            , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
+            , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
+        );
+        string viewIndexPath = DbComparer.CompareViews(
+            sourceDb
+            , destinationDb
+            , OutputFolder
+            , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
+            , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
+        );
+        string tableIndexpath = DbComparer.CompareTables(
+         sourceDb
+         , destinationDb
+         , OutputFolder
+         , ComparerAction.DoNotApplyChanges   // Set to ApplyChanges to update the destination DB
+         , DbObjectFilter.HideUnchanged       // Set to ShowUnchangedProcs for a full report
+     );
+        HtmlReportWriter.WriteIndexSummary(SourceConnectionString, DestinationConnectionString, OutputFolder, procIndexPath, viewIndexPath, tableIndexpath);
+        sw.Stop();
+        Console.WriteLine($"Elapsed time: {sw} ms");
+    }
+}
+```
+The HTML report is generated in the `Diffinity-output` folder by default.
 
 ### Configuration Options
 
@@ -60,52 +171,13 @@ The `Diffinity.CompareProcs, CompareViews and CompareTables` methods accept the 
 -   `makeChange`: A `ComparerAction` enum that specifies whether to apply changes (`ApplyChanges`) or not (`DoNotApplyChanges`).
 -   `filter`: A `DbObjectFilter` enum that determines whether to include unchanged procedures in the report (`ShowUnchanged`) or hide them (`HideUnchanged`).
 
-### Example
 
-Here is the default configuration in `Program.cs`:
 
-```csharp
-public static void Main(string[] args)
-{
-    // ... (Logger configuration)
-    // ... (environment variable validation and database connection checks at startup)
-
-        var sw = new Stopwatch();
-        sw.Start();
-        string procIndexPath = Diffinity.CompareProcs(
-            new DbServer(SourceDatabase, SourceConnectionString)
-            , new DbServer(DestinationDatabase, DestinationConnectionString)
-            , OutputFolder
-            , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
-            , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
-        );
-       string viewIndexPath = Diffinity.CompareViews(
-           new DbServer(SourceDatabase, SourceConnectionString)
-           , new DbServer(DestinationDatabase, DestinationConnectionString)
-           , OutputFolder
-           , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
-           , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
-       );
-        string tableIndexpath = Diffinity.CompareTables(
-         new DbServer(SourceDatabase, SourceConnectionString)
-         , new DbServer(DestinationDatabase, DestinationConnectionString)
-         , OutputFolder
-         , ComparerAction.DoNotApplyChanges   // Set to ApplyChanges to update the destination DB
-         , DbObjectFilter.HideUnchanged       // Set to ShowUnchangedProcs for a full report
-     );
-        HtmlReportWriter.WriteIndexSummary(SourceConnectionString,DestinationConnectionString,OutputFolder, procIndexPath, viewIndexPath, tableIndexpath);
-        sw.Stop();
-        Console.WriteLine($"Elapsed time: {sw} ms");
-}
-```
-
-The HTML report is generated in the `Diffinity-output` folder by default.
-
-## API Documentation
+## API Overview
 
 The core logic of the application is encapsulated in the `Diffinity` class and its helpers.
 
-### `Diffinity.DbComparer` class
+### `DbComparer` class
 
 This is the main class that orchestrates the comparison process.
 
@@ -122,7 +194,8 @@ This is the main class that orchestrates the comparison process.
     -   Optionally updates the destination procedure if differences are found.
     -   Generates a summary HTML report and individual HTML files for each procedure.
 
-### `Diffinity.HtmlHelper.HtmlReportWriter` class
+
+### `HtmlHelper.HtmlReportWriter` class
 
 This class is responsible for generating the HTML reports.
 
@@ -131,7 +204,8 @@ This class is responsible for generating the HTML reports.
 -   **`WriteBodyHtml(...)`**: Writes a simple HTML page showing the full body of a procedure, view, or table.
 -   **`DifferencesWriter(...)`**: Generates a side-by-side diff view using the DiffPlex library highlighting differences between source and destination bodies.
 
-### `Diffinity.ProcHelper, ViewHelper and TableHelper` Namespaces
+
+### `ProcHelper, ViewHelper and TableHelper` Namespaces
 
 These namespaces contain classes responsible for fetching stored procedures, views, table schemas, and performing table comparison and update operations.
 
@@ -141,14 +215,16 @@ These namespaces contain classes responsible for fetching stored procedures, vie
       
 -   **`TableComparerAndUpdater`**: Compares table schemas between source and destination and updates the destination schema to match.
     -   **`CompareTables(...)`**: Compares column name, data type, nullability, max length, primary and foreign key flags between source and destination tables and optionally alters the destination schema to match.
+
  
-### `Diffinity.DbObjectHandler` class
+### `DbObjectHandler` class
 
 This class handles logic for comparing and updating database objects (procedures, views, etc.).
 
 -   **`AreBodiesEqual(...)`**: Compares two SQL object bodies by normalizing and hashing them to determine structural equality.
 -   **`AlterDbObject(...)`**: Alters or creates a database object on the destination by executing either a CREATE or an ALTER version of the source body.
 -   **`dbObjectResult (...)`** (nested class): Holds the result of comparing a source and destination object, including metadata and file paths.
+
 
 ## Contributing
 
@@ -179,4 +255,6 @@ The `Program.cs` file contains a detailed to-do list with plans for future enhan
 
 Feel free to pick an item from the to-do list if you're looking for a place to start contributing!
 
-Developed with :sparkling_heart: in Lebanon
+<div align="center">
+  <sub><strong>Developed with :sparkling_heart: in Lebanon</strong></sub>
+</div>
