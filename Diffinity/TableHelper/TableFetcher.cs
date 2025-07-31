@@ -2,7 +2,7 @@
 using Microsoft.Data.SqlClient;
 using System.Text;
 
-namespace DbComparer.TableHelper;
+namespace Diffinity.TableHelper;
 public class TableFetcher
 {
     /// <summary>

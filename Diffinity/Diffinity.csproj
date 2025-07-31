@@ -1,11 +1,32 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
+	<PropertyGroup>
+
+		<TargetFramework>net8.0</TargetFramework>
+
+		<PackageId>Diffinity</PackageId>
+		<Version>1.0.0</Version>
+		<Authors>Najat Bdeir;Nada Husseini</Authors>
+		<Description>Compare SQL Server procedures, views, and tables. Detect changes, optionally sync databases, and generate HTML reports. Built for integration and automation.</Description>
+		<PackageTags>csharp;sql;diff;comparison;database;schema</PackageTags>
+		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+		<RepositoryUrl>https://github.com/HelenNow/Diffinity</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+
+		<PackageIcon>diffinityIcon.png</PackageIcon>
+
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="diffinityIcon.png" Pack="true" PackagePath="" />
+	</ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ColorCode" Version="1.0.1" />

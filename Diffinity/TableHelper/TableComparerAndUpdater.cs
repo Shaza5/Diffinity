@@ -1,7 +1,7 @@
 ﻿using Dapper;
 using Microsoft.Data.SqlClient;
 
-namespace DbComparer.TableHelper;
+namespace Diffinity.TableHelper;
 public static class TableComparerAndUpdater
 {
     /// <summary>

@@ -2,7 +2,7 @@
 using Microsoft.Data.SqlClient;
 
 
-namespace DbComparer.ProcHelper;
+namespace Diffinity.ProcHelper;
 public static class ProcedureFetcher
 {
     /// <summary>

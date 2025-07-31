@@ -2,7 +2,7 @@
 using Microsoft.Data.SqlClient;
 
 
-namespace DbComparer.ViewHelper;
+namespace Diffinity.ViewHelper;
 public static class ViewFetcher
 {
     /// <summary>
