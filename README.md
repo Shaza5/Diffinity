@@ -3,7 +3,9 @@
 </div>
 
 # Diffinity
-Diffinity is a C#-based application designed to compare database objects, such as stored procedures, views, and tables, between two SQL Server databases. It identifies differences and can optionally apply changes to synchronize the objects. The tool generates a detailed HTML report summarizing the comparison, with links to view the source and destination object definitions.
+Diffinity is a C# library and NuGet package for comparing database objects—such as stored procedures, views, and tables, between two SQL Server databases. It identifies differences and optionally applies changes to synchronize the objects. The library also supports generating detailed HTML reports summarizing the comparison, including links to view the source and destination definitions.
+
+Diffinity can be used as a standalone library in your own applications or through the included console driver (Driver) for out-of-the-box functionality.
 
 ## Features
 
@@ -18,7 +20,16 @@ Diffinity is a C#-based application designed to compare database objects, such a
 ## Side by Side Visual Diffs 
 <img width="1678" height="862" alt="image (4)" src="https://github.com/user-attachments/assets/620f8bee-db41-447d-9392-d79a1687ebc0" />
 
-## Installation
+## Getting Started
+### Option 1: Use the NuGet Package
+
+Install the Diffinity library into your own project:
+
+```bash
+dotnet add package Diffinity
+```
+
+### Option 2: Use the Console App (Driver)
 
 1.  **Clone the repository:**
     ```bash
@@ -33,46 +44,40 @@ Diffinity is a C#-based application designed to compare database objects, such a
 
     You can set them in your system's environment variables or create a `.env` file in the project root.
 
-3.  **Build the project:**
+3.  **Build and run:**
     Open the solution in Visual Studio and build the project, or use the `dotnet` CLI:
     ```bash
     dotnet build
+    dotnet run --project Driver
     ```
-
-## Usage
-
-To run the application, you can use the `dotnet run` command from the `Diffinity` project directory:
-
-```bash
-cd Diffinity
-dotnet run
-```
-
 The application's behavior is configured directly in the `Program.cs` file. You can modify the `Main` method to change the comparison options.
 
-### Configuration Options
+## Usage
+### Example Usage of the Library
 
-The `Diffinity.CompareProcs, CompareViews and CompareTables` methods accept the following parameters:
+```csharp
+using Diffinity;
 
--   `sourceServer`: A `DbServer` object representing the source database.
--   `destinationServer`: A `DbServer` object representing the destination database.
--   `outputFolder`: The directory where the HTML reports will be saved.
--   `makeChange`: A `ComparerAction` enum that specifies whether to apply changes (`ApplyChanges`) or not (`DoNotApplyChanges`).
--   `filter`: A `DbObjectFilter` enum that determines whether to include unchanged procedures in the report (`ShowUnchanged`) or hide them (`HideUnchanged`).
-
-### Example
+var result = DbComparer.CompareProcs(
+    new DbServer("Source", sourceCs),
+    new DbServer("Dest", destinationCs),
+    "output-folder",
+    ComparerAction.DoNotApplyChanges,
+    DbObjectFilter.ShowUnchanged
+);
+```
+### Example Usage of the Console Driver
 
 Here is the default configuration in `Program.cs`:
 
 ```csharp
-public static void Main(string[] args)
-{
-using DbComparer.HtmlHelper;
 using Microsoft.Data.SqlClient;
 using Serilog;
+using Diffinity;
 using System.Diagnostics;
+using Diffinity.HtmlHelper;
 
-namespace DbComparer;
+namespace Driver;
 public class Program
 {
     private const string OutputFolder = @"Diffinity-output";
@@ -153,16 +158,26 @@ public class Program
         Console.WriteLine($"Elapsed time: {sw} ms");
     }
 }
-}
 ```
-
 The HTML report is generated in the `Diffinity-output` folder by default.
 
-## API Documentation
+### Configuration Options
+
+The `Diffinity.CompareProcs, CompareViews and CompareTables` methods accept the following parameters:
+
+-   `sourceServer`: A `DbServer` object representing the source database.
+-   `destinationServer`: A `DbServer` object representing the destination database.
+-   `outputFolder`: The directory where the HTML reports will be saved.
+-   `makeChange`: A `ComparerAction` enum that specifies whether to apply changes (`ApplyChanges`) or not (`DoNotApplyChanges`).
+-   `filter`: A `DbObjectFilter` enum that determines whether to include unchanged procedures in the report (`ShowUnchanged`) or hide them (`HideUnchanged`).
+
+
+
+## API Overview
 
 The core logic of the application is encapsulated in the `Diffinity` class and its helpers.
 
-### `Diffinity.DbComparer` class
+### `DbComparer` class
 
 This is the main class that orchestrates the comparison process.
 
@@ -179,7 +194,8 @@ This is the main class that orchestrates the comparison process.
     -   Optionally updates the destination procedure if differences are found.
     -   Generates a summary HTML report and individual HTML files for each procedure.
 
-### `Diffinity.HtmlHelper.HtmlReportWriter` class
+
+### `HtmlHelper.HtmlReportWriter` class
 
 This class is responsible for generating the HTML reports.
 
@@ -188,7 +204,8 @@ This class is responsible for generating the HTML reports.
 -   **`WriteBodyHtml(...)`**: Writes a simple HTML page showing the full body of a procedure, view, or table.
 -   **`DifferencesWriter(...)`**: Generates a side-by-side diff view using the DiffPlex library highlighting differences between source and destination bodies.
 
-### `Diffinity.ProcHelper, ViewHelper and TableHelper` Namespaces
+
+### `ProcHelper, ViewHelper and TableHelper` Namespaces
 
 These namespaces contain classes responsible for fetching stored procedures, views, table schemas, and performing table comparison and update operations.
 
@@ -198,14 +215,16 @@ These namespaces contain classes responsible for fetching stored procedures, vie
       
 -   **`TableComparerAndUpdater`**: Compares table schemas between source and destination and updates the destination schema to match.
     -   **`CompareTables(...)`**: Compares column name, data type, nullability, max length, primary and foreign key flags between source and destination tables and optionally alters the destination schema to match.
+
  
-### `Diffinity.DbObjectHandler` class
+### `DbObjectHandler` class
 
 This class handles logic for comparing and updating database objects (procedures, views, etc.).
 
 -   **`AreBodiesEqual(...)`**: Compares two SQL object bodies by normalizing and hashing them to determine structural equality.
 -   **`AlterDbObject(...)`**: Alters or creates a database object on the destination by executing either a CREATE or an ALTER version of the source body.
 -   **`dbObjectResult (...)`** (nested class): Holds the result of comparing a source and destination object, including metadata and file paths.
+
 
 ## Contributing
 
