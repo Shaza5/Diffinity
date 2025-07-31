@@ -20,6 +20,16 @@ Diffinity can be used as a standalone library in your own applications or throug
 ## Side by Side Visual Diffs 
 <img width="1678" height="862" alt="image (4)" src="https://github.com/user-attachments/assets/620f8bee-db41-447d-9392-d79a1687ebc0" />
 
+## Database Setup
+
+Before using the `Diffinity` library, you must create a few stored procedures in **both** the source and destination SQL Server databases. These procedures are used internally to fetch metadata and object definitions.
+
+You can find the setup script here:
+
+➡️ [sql/setup-required-procs.sql](./sql/setup-required-procs.sql)
+
+Run the script on both databases to ensure `Diffinity` functions correctly.
+
 ## Getting Started
 ### Option 1: Use the NuGet Package
 
@@ -51,6 +61,7 @@ dotnet add package Diffinity
     dotnet run --project Driver
     ```
 The application's behavior is configured directly in the `Program.cs` file. You can modify the `Main` method to change the comparison options.
+
 
 ## Usage
 ### Example Usage of the Library
