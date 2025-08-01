@@ -16,6 +16,7 @@
 		<Description>Compare SQL Server procedures, views, and tables. Detect changes, optionally sync databases, and generate HTML reports. Built for integration and automation.</Description>
 		<PackageTags>csharp;sql;diff;comparison;database;schema</PackageTags>
 		<PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RepositoryUrl>https://github.com/HelenNow/Diffinity</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 
@@ -24,6 +25,9 @@
 		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 	</PropertyGroup>
 
+	<ItemGroup>
+		<None Include="README.md" Pack="true" PackagePath="" />
+	</ItemGroup>
 	<ItemGroup>
 		<None Include="diffinityIcon.png" Pack="true" PackagePath="" />
 	</ItemGroup>

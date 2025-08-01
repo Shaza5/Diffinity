@@ -33,6 +33,8 @@ Run the script on both databases to ensure `Diffinity` functions correctly.
 ## Getting Started
 ### Option 1: Use the NuGet Package
 
+[![NuGet](https://img.shields.io/nuget/v/Diffinity.svg)](https://www.nuget.org/packages/Diffinity)
+
 Install the Diffinity library into your own project:
 
 ```bash
