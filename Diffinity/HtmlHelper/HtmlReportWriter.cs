@@ -368,6 +368,7 @@ public static class HtmlReportWriter
             white-space: pre;
             width: fit-content; 
         }
+
          .line-number {
              color: #999;
              text-align: right;
@@ -379,6 +380,22 @@ public static class HtmlReportWriter
               font-family: Consolas;
               overflow-wrap: break-word;
          }
+        .copy-btn {
+            float: right;
+            margin: 3px 12px 0px 50px;
+            background-color: #EC317F;
+            color: white;
+            border: none;
+            top: -2px;
+            font-size : 15px;
+            padding: 10px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
+        }
+        .copy-btn:hover {
+              background-color: #b42a68;
+        }
        .return-btn {
             display: block;
             width: 220px;
@@ -418,18 +435,18 @@ public static class HtmlReportWriter
         string destinationServer = destinationBuilder.DataSource;
         string sourceDatabase = sourceBuilder.InitialCatalog;
         string destinationDatabase = destinationBuilder.InitialCatalog;
-        
+
         StringBuilder html = new StringBuilder();
         DateTime date = DateTime.UtcNow; ;
         string Date = date.ToString("MM/dd/yyyy hh:mm tt ") + "UTC";
 
         // Create links to individual index pages
-        string procsIndex = procIndexPath==null ? "": $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
-        string viewsIndex = viewIndexPath==null ? "" :$@"<a href=""{viewIndexPath}"" class=""btn"">Views</a>";
+        string procsIndex = procIndexPath == null ? "" : $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
+        string viewsIndex = viewIndexPath == null ? "" : $@"<a href=""{viewIndexPath}"" class=""btn"">Views</a>";
         string tablesIndex = tableIndexPath == null ? "" : $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>";
 
         // Replace placeholders in the index template
-        html.Append(IndexTemplate.Replace("{sourceServer}",sourceServer).Replace("{sourceDatabase}", sourceDatabase).Replace("{destinationServer}", destinationServer).Replace("{destinationDatabase}", destinationDatabase).Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex).Replace("{Date}", Date));
+        html.Append(IndexTemplate.Replace("{sourceServer}", sourceServer).Replace("{sourceDatabase}", sourceDatabase).Replace("{destinationServer}", destinationServer).Replace("{destinationDatabase}", destinationDatabase).Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex).Replace("{Date}", Date));
         string indexPath = Path.Combine(outputPath, "index.html");
 
         // Write to index.html
@@ -442,12 +459,12 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes a detailed summary report comparing objects (procedures, views, tables) between source and destination.
     /// </summary>
-    public static void WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<dbObjectResult> results, DbObjectFilter filter,Run run)
+    public static void WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<dbObjectResult> results, DbObjectFilter filter, Run run)
     {
         StringBuilder html = new();
         var result = results[0];
         string returnPage = Path.Combine("..", "index.html");
-        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}",BuildNav(run)));
+        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}", BuildNav(run)));
 
         #region 1-Create the new table
         var newProcedures = results.Where(r => r.IsDestinationEmpty).ToList();
@@ -498,7 +515,7 @@ public static class HtmlReportWriter
             // Add differences column only if file exists
             if (item.DifferencesFile != null)
             {
-                html.Replace("{differences}", "<th>Differences</th>");
+                html.Replace("{differences}", "<th>Changes</th>");
                 differencesColumn = $@"<td><a href=""{item.DifferencesFile}"">View</a></td>";
             }
             else
@@ -533,7 +550,7 @@ public static class HtmlReportWriter
         {
             string proceduresPath = "../Procedures/index.html";
             string viewsPath = "../Views/index.html";
-            string tablesPath= "../Tables/index.html";
+            string tablesPath = "../Tables/index.html";
             var sb = new StringBuilder();
             sb.AppendLine(@"<nav class=""top-nav"">");
             switch (run)
@@ -633,18 +650,39 @@ public static class HtmlReportWriter
     public static void DifferencesWriter(string differencesPath, string sourceName, string destinationName, string sourceBody, string destinationBody, string title, string Name, string returnPage)
     {
         var differ = new Differ();
-        string[] sourceBodyColored = HighlightSql(sourceBody).Split("\n");
-        string[] destinationBodyColored = HighlightSql(destinationBody).Split("\n");
+        string normalizedSourceBody = Normalize(sourceBody);
+        string normalizedDestinationBody = Normalize(destinationBody);
+        string[] sourceBodyColored = HighlightSql(normalizedSourceBody).Split("\n");
+        string[] destinationBodyColored = HighlightSql(normalizedDestinationBody).Split("\n");
         var sideBySideBuilder = new SideBySideDiffBuilder(differ);
-        var model = sideBySideBuilder.BuildDiffModel(string.Join("\n", destinationBodyColored), string.Join("\n",sourceBodyColored));
+        var model = sideBySideBuilder.BuildDiffModel(string.Join("\n", destinationBodyColored), string.Join("\n", sourceBodyColored));
 
         var html = new StringBuilder();
         html.AppendLine(DifferencesTemplate.Replace("{title}", title));
 
-        // Destination block
+        // Source block
         html.AppendLine(@$"<h1>{Name}</h1>
                         <div class='diff-wrapper'>
-                        <div class='pane'><h2>{destinationName}</h2><div class=""code-scroll""><div class='code-block'>");
+                        <div class='pane'>
+                        <button class='copy-btn' data-target='left'>Copy</button>
+                        <h2>{sourceName}</h2>
+                        <div class='code-scroll' id='left'><div class='code-block'>
+
+");
+        foreach (var line in model.NewText.Lines)
+        {
+            string css = GetCssClass(line.Type);
+            string lineNumber = line.Position == 0 ? "" : line.Position.ToString();
+            html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
+                            <div class='line-text {css}'>{line.Text}</div>");
+        }
+        // Destination block
+        html.Append($@"</div></div></div>
+                        <div class='pane'>
+                        <button class='copy-btn' data-target='right'>Copy</button>
+                        <h2>{destinationName}</h2>
+                        <div class='code-scroll' id='right'><div class='code-block'>
+                        ");
         foreach (var line in model.OldText.Lines)
         {
             string css = GetCssClass(line.Type);
@@ -653,21 +691,25 @@ public static class HtmlReportWriter
                            <div class='line-text {css}'>{line.Text}</div>");
         }
 
-        // Source block
-        html.AppendLine(@$"</div></div></div>
-                        <div class='pane'><h2>{sourceName}</h2><div class=""code-scroll""><div class='code-block'>");
-        foreach (var line in model.NewText.Lines)
-        {
-            string css = GetCssClass(line.Type);
-            string lineNumber = line.Position == 0 ? "" : line.Position.ToString();
-            html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
-                            <div class='line-text {css}'>{line.Text}</div>");
-        }
-
         // Scroll sync script
         html.AppendLine(@$"</div></div></div></div><br>
                  <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
-
+              
+                <script>
+                document.querySelectorAll('.copy-btn').forEach(button => {{
+                    button.addEventListener('click', () => {{
+                        const targetId = button.getAttribute('data-target');
+                        const block = document.getElementById(targetId);
+                        const text = Array.from(block.querySelectorAll('.line-text'))
+                                          .map(line => line.textContent)
+                                          .join('\n');
+                        navigator.clipboard.writeText(text).then(() => {{
+                            button.textContent = 'Copied!';
+                            setTimeout(() => button.textContent = 'Copy', 2000);
+                        }});
+                    }});
+                }});
+                </script>
                  <script>
                  const blocks = document.querySelectorAll('.code-scroll');
                  
@@ -698,6 +740,16 @@ public static class HtmlReportWriter
                  </body>
                  </html>");
         File.WriteAllText(differencesPath, html.ToString());
+
+        #region local function
+        string Normalize(string input)
+        {
+            if (input == null) return null;
+
+            // Normalize the input for consistent comparison
+            return input.Replace("[", "").Replace("]", "");
+        }
+        #endregion
     }
     #endregion
 
@@ -734,7 +786,7 @@ public static class HtmlReportWriter
     static string HighlightSql(string sqlCode)
     {
         var colorizer = new CodeColorizer();
-        string coloredCode=colorizer.Colorize(sqlCode, Languages.Sql).Replace(@"<div style=""color:Black;background-color:White;""><pre>", "").Replace("</div>", "");
+        string coloredCode = colorizer.Colorize(sqlCode, Languages.Sql).Replace(@"<div style=""color:Black;background-color:White;""><pre>", "").Replace("</div>", "");
         return coloredCode;
     }
 

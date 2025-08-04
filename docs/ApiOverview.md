@@ -1,4 +1,4 @@
-## API Overview
+# API Overview
 
 The `Diffinity.Compare` method accepts the following parameters:
 
@@ -19,7 +19,7 @@ The `Diffinity.Compare` method accepts the following parameters:
 
 The core logic of the application is encapsulated in the `Diffinity` class and its helpers.
 
-### `DbComparer` class
+## `DbComparer` class
 
 This is the main class that orchestrates the comparison process.
 -   **`Compare(DbServer sourceServer,DbServer destinationServer, ILogger? logger = null, string? outputFolder = null, ComparerAction? makeChange = ComparerAction.DoNotApplyChanges, DbObjectFilter? filter = DbObjectFilter.HideUnchanged,Run? run=Run.All)`**:
@@ -36,9 +36,10 @@ This is the main class that orchestrates the comparison process.
     -   Uses hash-based body comparison to detect changes.
     -   Optionally updates the destination procedure if differences are found.
     -   Generates a summary HTML report and individual HTML files for each procedure.
+    -   Supports an optional .diffignore file to skip specific procedures, views, or tables during comparison.
 
 
-### `HtmlHelper.HtmlReportWriter` class
+## `HtmlHelper.HtmlReportWriter` class
 
 This class is responsible for generating the HTML reports.
 
@@ -48,7 +49,7 @@ This class is responsible for generating the HTML reports.
 -   **`DifferencesWriter(...)`**: Generates a side-by-side diff view using the DiffPlex library highlighting differences between source and destination bodies.
 
 
-### `ProcHelper, ViewHelper and TableHelper` Namespaces
+## `ProcHelper, ViewHelper and TableHelper` Namespaces
 
 These namespaces contain classes responsible for fetching stored procedures, views, table schemas, and performing table comparison and update operations.
 
@@ -60,7 +61,7 @@ These namespaces contain classes responsible for fetching stored procedures, vie
     -   **`CompareTables(...)`**: Compares column name, data type, nullability, max length, primary and foreign key flags between source and destination tables and optionally alters the destination schema to match.
 
  
-### `DbObjectHandler` class
+## `DbObjectHandler` class
 
 This class handles logic for comparing and updating database objects (procedures, views, etc.).
 
@@ -68,3 +69,26 @@ This class handles logic for comparing and updating database objects (procedures
 -   **`AlterDbObject(...)`**: Alters or creates a database object on the destination by executing either a CREATE or an ALTER version of the source body.
 -   **`dbObjectResult (...)`** (nested class): Holds the result of comparing a source and destination object, including metadata and file paths.
 
+
+## `.diffignore Support`
+The comparison process supports an optional `.diffignore` file to **exclude** specific database objects from comparison.
+
+diffignore.txt should be in the same directory as the compiled `.exe` file.
+
+Each line should contain the name of a stored procedure, view, or table to be ignored.
+
+Lines beginning with # are treated as comments and ignored.
+
+Matching is **case-insensitive**.
+
+Example `.diffignore`:
+```
+# Ignore some procs and views
+usp_GenerateReport
+vw_ArchivedUsers
+
+# Ignore a table
+tbl_TempLogs
+```
+
+If present, any object listed in the .diffignore file will be skipped during the comparison and will not appear in the HTML reports.

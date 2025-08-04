@@ -14,17 +14,7 @@ Diffinity can be used as a standalone library in your own applications or throug
 -   Optionally applies changes to the destination database to match the source.
 -   Filters the report to show all objects or only those with differences.
 -   Logs execution details to both the console and a log file.
-
-
-## Database Setup
-
-Before using the `Diffinity` library, you must create a few stored procedures in **both** the source and destination SQL Server databases. These procedures are used internally to fetch metadata and object definitions.
-
-You can find the setup script here:
-
-➡️ [sql/setup-required-procs.sql](https://github.com/HelenNow/Diffinity/blob/main/sql/setup-required-procs.sql)
-
-Run the script on both databases to ensure `Diffinity` functions correctly.
+-   Supports a .diffignore file to exclude specific procedures, views, or tables from comparison. 
 
 ## Getting Started
 ### Option 1: Use the NuGet Package
@@ -40,35 +30,80 @@ To use the included console driver (`Driver`), clone the repository and follow i
 
 📎 [GitHub Repository](https://github.com/HelenNow/Diffinity)
 
-
-## Usage
-### Example Usage of the Library
+## Example Usage
 
 ```csharp
 using Diffinity;
+using System.Diagnostics;
 
-var result = DbComparer.CompareProcs(
-    new DbServer("Source", sourceCs),
-    new DbServer("Dest", destinationCs),
-    "output-folder",
-    ComparerAction.DoNotApplyChanges,
-    DbObjectFilter.ShowUnchanged
-);
+internal class Program
+{
+    static void Main(string[] args)
+    {
+        var MyDbV1 = new DbServer("My Db V1", Environment.GetEnvironmentVariable("db_v1_cs"));
+        var MyDbV2 = new DbServer("My Db V2", Environment.GetEnvironmentVariable("db_v2_cs"));
+        string IndexPage = DbComparer.Compare(MyDbV1, MyDbV2);
+        Process.Start(new ProcessStartInfo { FileName = IndexPage, UseShellExecute = true });
+    }
+}
 ```
 
+## Detailed Example Usage
+```csharp
+using Diffinity;
+using System.Diagnostics;
+
+internal class Program
+{
+    static void Main(string[] args)
+    {
+        var MyDbV1 = new DbServer("My Db V1", Environment.GetEnvironmentVariable("db_v1_cs"));
+        var MyDbV2 = new DbServer("My Db V2", Environment.GetEnvironmentVariable("db_v2_cs"));
+
+        // You can optionally pass any of the following parameters:
+        // logger: your custom ILogger instance
+        // outputFolder: path to save the results (string)
+        // makeChange: whether to apply changes (ComparerAction.ApplyChanges,ComparerAction.DoNotApplyChanges)
+        // filter: filter rules (DbObjectFilter.ShowUnchanged,DbObjectFilter.HideUnchanged)
+        // run: execute comparison on specific dbObject(Run.Proc,Run.View,Run.Table,Run.ProcView,Run.ProcTable,Run.ViewTable,Run.All)
+        string IndexPage = DbComparer.Compare(MyDbV1, MyDbV2, logger: myLogger, outputFolder: "customPath", makeChange: true, run: Run.Proc);
+        Process.Start(new ProcessStartInfo { FileName = IndexPage, UseShellExecute = true });
+    }
+}
+```
+The HTML report is generated in the `Diffinity-output` folder by default.
+
 ## API Overview
+
+The `Diffinity.Compare` method accepts the following parameters:
+
+-   `sourceServer`: A `DbServer` object representing the source database.
+-   `destinationServer`: A `DbServer` object representing the destination database.
+-   `logger` (optional): An `ILogger` instance for logging output. If not provided, a default logger is used.
+-   `outputFolder` (optional): The `directory` where the generated HTML comparison reports will be saved. Defaults to a predefined Diffinity-output if not specified.`
+-   `makeChange`: A `ComparerAction` enum that specifies whether to apply changes (`ApplyChanges`) or not (`DoNotApplyChanges`).
+-   `filter`: A `DbObjectFilter` enum that determines whether to include unchanged procedures in the report (`ShowUnchanged`) or hide them (`HideUnchanged`).
+-   `run`: A Run `enum` value indicating which database objects to compare, if not specified, default is All:
+    -   `Proc`: Compare only stored procedures.
+    -   `View`: Compare only views.
+    -   `Table`: Compare only tables.
+    -   `ProcView`: Compare stored procedures and views.
+    -   `ProcTable`: Compare stored procedures and tables.
+    -   `ViewTable`: Compare views and tables.
+    -   `All`: Compare procedures, views, and tables.
 
 The core logic of the application is encapsulated in the `Diffinity` class and its helpers.
 
 ### `DbComparer` class
 
 This is the main class that orchestrates the comparison process.
-
--   **`CompareProcs(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, ProcsFilter filter)`**:
+-   **`Compare(DbServer sourceServer,DbServer destinationServer, ILogger? logger = null, string? outputFolder = null, ComparerAction? makeChange = ComparerAction.DoNotApplyChanges, DbObjectFilter? filter = DbObjectFilter.HideUnchanged,Run? run=Run.All)`**:
+    -   Compares selected database objects based on the Run option and returns a generated HTML summary report.
+-   **`CompareProcs(DbServer sourceServer, DbServer destinationServer,string outputFolder , ComparerAction makeChange, DbObjectFilter filter, Run run, HashSet<string> ignoredObjects)`**:
     -   Compares stored procedures.
--   **`public static string CompareViews(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)`**
+-   **`CompareViews(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter, Run run, HashSet<string> ignoredObjects)`**
     -   Compares SQL views.
--   **`public static string CompareTables(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)`**
+-   **`CompareTables(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter, Run run, HashSet<string> ignoredObjects)`**
     -   Compares table definitions.
       
 -   **`Each Method`**:
@@ -76,7 +111,7 @@ This is the main class that orchestrates the comparison process.
     -   Uses hash-based body comparison to detect changes.
     -   Optionally updates the destination procedure if differences are found.
     -   Generates a summary HTML report and individual HTML files for each procedure.
-
+    -   Supports an optional .diffignore file to skip specific procedures, views, or tables during comparison.
 
 ### `HtmlHelper.HtmlReportWriter` class
 
@@ -108,6 +143,28 @@ This class handles logic for comparing and updating database objects (procedures
 -   **`AlterDbObject(...)`**: Alters or creates a database object on the destination by executing either a CREATE or an ALTER version of the source body.
 -   **`dbObjectResult (...)`** (nested class): Holds the result of comparing a source and destination object, including metadata and file paths.
 
+## .diffignore Support
+The comparison process supports an optional .diffignore file to exclude specific database objects from comparison.
+
+diffignore.txt should be in the same directory as the compiled .exe file.
+
+Each line should contain the name of a stored procedure, view, or table to be ignored.
+
+Lines beginning with # are treated as comments and ignored.
+
+Matching is case-insensitive.
+
+Example .diffignore:
+```
+# Ignore some procs and views
+usp_GenerateReport
+vw_ArchivedUsers
+
+# Ignore a table
+tbl_TempLogs
+```
+
+If present, any object listed in the .diffignore file will be skipped during the comparison and will not appear in the HTML reports.
 
 ## For Contributors
 

@@ -8,6 +8,7 @@
 
 - [Homepage](https://HelenNow.github.io/Diffinity/index.html)
 - [Documentation](docs/documentation.md)
+- [ApiOverview](docs/ApiOverview.md)
 - [NuGet Package](https://www.nuget.org/packages/Diffinity/)
 - [Contributing Guidelines](CONTRIBUTING.md)
 - [License](LICENSE)

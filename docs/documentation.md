@@ -7,6 +7,7 @@
 -   Optionally applies changes to the destination database to match the source.
 -   Filters the report to show all objects or only those with differences.
 -   Logs execution details to both the console and a log file.
+-   Supports a `.diffignore` file to exclude specific procedures, views, or tables from comparison.
 
 <img width="1678" height="862" alt="image (4)" src="https://github.com/user-attachments/assets/620f8bee-db41-447d-9392-d79a1687ebc0" />
 
