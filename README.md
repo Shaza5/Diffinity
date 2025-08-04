@@ -7,20 +7,6 @@ Diffinity is a C# library and NuGet package for comparing database objects—suc
 
 Diffinity can be used as a standalone library in your own applications or through the included console driver (Driver) for out-of-the-box functionality.
 
-## Features
-
--   Compares stored procedures, views and tables between two SQL Server databases.
--   Uses a hash-based comparison to detect changes efficiently.
--   Generates an HTML summary report of the differences.
--   Provides Side-by-side visual diffs of source and destination objects.
--   Optionally applies changes to the destination database to match the source.
--   Filters the report to show all objects or only those with differences.
--   Logs execution details to both the console and a log file.
-
-## Side by Side Visual Diffs 
-<img width="1678" height="862" alt="image (4)" src="https://github.com/user-attachments/assets/620f8bee-db41-447d-9392-d79a1687ebc0" />
-
-
 ## Getting Started
 ### Option 1: Use the NuGet Package
 
@@ -42,8 +28,8 @@ dotnet add package Diffinity
 
 2.  **Set up environment variables:**
     This project uses environment variables to store database connection strings. You need to set the following variables:
-    -   `sourceCs`: The connection string for the source database.
-    -   `destinationCs`: The connection string for the destination database.
+    -   `db_v1_cs`: The connection string for the source database.
+    -   `db_v2_cs`: The connection string for the destination database.
 
     You can set them in your system's environment variables or create a `.env` file in the project root.
 
@@ -98,6 +84,22 @@ internal class Program
 }
 ```
 The HTML report is generated in the `Diffinity-output` folder by default.
+
+<img width="1678" height="862" alt="image (4)" src="https://github.com/user-attachments/assets/620f8bee-db41-447d-9392-d79a1687ebc0" />
+
+## Features
+
+-   Compares stored procedures, views and tables between two SQL Server databases.
+-   Uses a hash-based comparison to detect changes efficiently.
+-   Generates an HTML summary report of the differences.
+-   Provides Side-by-side visual diffs of source and destination objects.
+-   Optionally applies changes to the destination database to match the source.
+-   Filters the report to show all objects or only those with differences.
+-   Logs execution details to both the console and a log file.
+
+
+
+
 
 ### Configuration Options
 
