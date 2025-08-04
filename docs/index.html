@@ -1,0 +1,127 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+          font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+          margin: 40px;
+          background-color: #f9f9f9;
+          color: #333;
+          line-height: 1.6;
+        }
+    
+        .container {
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 30px;
+          background: #fff;
+          border-radius: 10px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+    
+        .logo {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 20px;
+        }
+    
+        .logo img {
+          width: 250px;
+          height: 250px;
+          object-fit: contain;
+        }
+    
+        h1 {
+          text-align: center;
+          font-size: 36px;
+          margin-bottom: 20px;
+          color:black;
+        }
+    
+        p {
+          font-size: 17px;
+          margin-bottom: 20px;
+        }
+    
+        .buttons {
+          text-align: center;
+          margin-top: 30px;
+        }
+    
+        .btn {
+          display: inline-block;
+          padding: 12px 24px;
+          font-size: 16px;
+          font-weight: bold;
+          text-align: center;
+          text-decoration: none;
+          border-radius: 6px;
+          margin: 0 10px;
+          border: 1px solid transparent;
+          transition: background-color 0.3s ease;
+        }
+    
+        .btn-download {
+          background-color: #5cb85c;
+          color: #fff;
+          border-color: #4cae4c;
+        }
+    
+        .btn-download:hover {
+          background-color: #4cae4c;
+        }
+    
+        .btn-source {
+          background-color: #337ab7;
+          color: #fff;
+          border-color: #2e6da4;
+        }
+    
+        .btn-source:hover {
+          background-color: #286090;
+        }
+    
+        .btn i {
+          margin-right: 8px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="logo">
+          <img src="https://github.com/user-attachments/assets/b31874d5-2771-477f-a7e5-cced9af0b257" alt="Diffinity Logo">
+        </div>
+    
+        <h1>Diffinity</h1>
+    
+        <p>
+          <strong>Diffinity</strong> is a C# library and NuGet package for comparing database objects—such as stored procedures, views, and tables—between two SQL Server databases.
+          It identifies differences and optionally applies changes to synchronize the objects. The library also supports generating detailed HTML reports summarizing the comparison,
+          including links to view the source and destination definitions.
+        </p>
+    
+        <p>
+          <strong>Project Story: Why Diffinity Was Created</strong><br>
+          Diffinity was born out of the need to efficiently compare and synchronize SQL Server database objects across different environments. Managing stored procedures,
+          views, and tables manually between development, testing, and production can be error-prone and time-consuming.
+          Nada Husseini and Najat Bdeir created this C# application to automate the detection of differences and generate clear HTML reports that make it easy to spot changes.
+          <br><br>
+          The project also provides an optional feature to apply updates automatically to the destination database, reducing human error and saving precious time during deployments.
+          By offering a straightforward, configurable tool, Diffinity aims to help developers and DBAs maintain consistency across databases with confidence.
+        </p>
+    
+        <div class="buttons">
+          <a class="btn btn-download" href="https://www.nuget.org/packages/Diffinity/" target="_blank">
+            <i class="fa fa-download"></i> Download
+          </a>
+    
+          <a class="btn btn-source" href="https://github.com/HelenNow/Diffinity" target="_blank">
+            <i class="fab fa-github"></i> Source code
+          </a>
+        </div>
+      </div>
+    </body>
+    </html>
