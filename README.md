@@ -20,15 +20,6 @@ Diffinity can be used as a standalone library in your own applications or throug
 ## Side by Side Visual Diffs 
 <img width="1678" height="862" alt="image (4)" src="https://github.com/user-attachments/assets/620f8bee-db41-447d-9392-d79a1687ebc0" />
 
-## Database Setup
-
-Before using the `Diffinity` library, you must create a few stored procedures in **both** the source and destination SQL Server databases. These procedures are used internally to fetch metadata and object definitions.
-
-You can find the setup script here:
-
-➡️ [sql/setup-required-procs.sql](./sql/setup-required-procs.sql)
-
-Run the script on both databases to ensure `Diffinity` functions correctly.
 
 ## Getting Started
 ### Option 1: Use the NuGet Package
@@ -78,23 +69,7 @@ internal class Program
         var MyDbV1 = new DbServer("My Db V1", Environment.GetEnvironmentVariable("db_v1_cs"));
         var MyDbV2 = new DbServer("My Db V2", Environment.GetEnvironmentVariable("db_v2_cs"));
         string IndexPage = DbComparer.Compare(MyDbV1, MyDbV2);
-        #region Optional:
-        // You can optionally pass any of the following parameters:
-        // logger: your custom ILogger instance
-        // outputFolder: path to save the results (string)
-        // makeChange: whether to apply changes (ComparerAction.ApplyChanges,ComparerAction.DoNotApplyChanges)
-        // filter: filter rules (DbObjectFilter.ShowUnchanged,DbObjectFilter.HideUnchanged)
-        // run: execute comparison on specific dbObject(Run.Proc,Run.View,Run.Table,Run.ProcView,Run.ProcTable,Run.ViewTable,Run.All)
-        //
-        // Example:
-        // string IndexPage = DbComparer.Compare(MyDbV1, MyDbV2, logger: myLogger, outputFolder: "customPath", makeChange: true);
-        #endregion
-        var psi = new ProcessStartInfo
-        {
-            FileName = IndexPage,
-            UseShellExecute = true
-        };
-        Process.Start(psi);
+        Process.Start(new ProcessStartInfo { FileName = IndexPage, UseShellExecute = true });
     }
 }
 ```
@@ -117,15 +92,8 @@ internal class Program
         // makeChange: whether to apply changes (ComparerAction.ApplyChanges,ComparerAction.DoNotApplyChanges)
         // filter: filter rules (DbObjectFilter.ShowUnchanged,DbObjectFilter.HideUnchanged)
         // run: execute comparison on specific dbObject(Run.Proc,Run.View,Run.Table,Run.ProcView,Run.ProcTable,Run.ViewTable,Run.All)
-
         string IndexPage = DbComparer.Compare(MyDbV1, MyDbV2, logger: myLogger, outputFolder: "customPath", makeChange: true, run: Run.Proc);
-
-        var psi = new ProcessStartInfo
-        {
-            FileName = IndexPage,
-            UseShellExecute = true
-        };
-        Process.Start(psi);
+        Process.Start(new ProcessStartInfo { FileName = IndexPage, UseShellExecute = true });
     }
 }
 ```
