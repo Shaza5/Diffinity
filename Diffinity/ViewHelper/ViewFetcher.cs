@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using Diffinity.DbHelper;
 using Microsoft.Data.SqlClient;
 
 
@@ -13,7 +14,7 @@ public static class ViewFetcher
     public static List<string> GetViewsNames(string sourceConnectionString)
     {
         using var sourceConnection = new SqlConnection(sourceConnectionString);
-        var list = sourceConnection.Query<string>("tools.spGetViewsNames").AsList();
+        var list = sourceConnection.Query<string>(Queries.GetViewsNames).AsList();
         return list;
     }
     
@@ -28,8 +29,8 @@ public static class ViewFetcher
         using SqlConnection sourceConnection      = new SqlConnection(sourceConnectionString);
         using SqlConnection destinationConnection = new SqlConnection(destinationConnectionString);
 
-        string sourceBody      = sourceConnection.QueryFirst<string>("tools.spGetViewBody",new { viewName = viewName });
-        string destinationBody = destinationConnection.QueryFirst<string>("tools.spGetViewBody", new { viewName = viewName });
+        string sourceBody      = sourceConnection.QueryFirst<string>(Queries.GetViewBody,new { viewName = viewName });
+        string destinationBody = destinationConnection.QueryFirst<string>(Queries.GetViewBody, new { viewName = viewName });
         return (sourceBody, destinationBody);
     }
 }

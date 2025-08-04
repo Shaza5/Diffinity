@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using Diffinity.DbHelper;
 using Microsoft.Data.SqlClient;
 using System.Text;
 
@@ -13,7 +14,7 @@ public class TableFetcher
     public static List<string> GetTablesNames(string sourceConnectionString)
     {
         using var sourceConnection = new SqlConnection(sourceConnectionString);
-        var list = sourceConnection.Query<string>("tools.spGetTablesNames").AsList();
+        var list = sourceConnection.Query<string>(Queries.GetTablesNames).AsList();
         return list;
     }
 
@@ -26,8 +27,8 @@ public class TableFetcher
     {
         using SqlConnection sourceConnection = new SqlConnection(sourceConnectionString);
         using SqlConnection destinationConnection = new SqlConnection(destinationConnectionString);
-        var sourceInfo = sourceConnection.Query<tableDto>("tools.spGetTableInfo", new { FullName = fullTableName }).ToList();
-        var destinationInfo = sourceConnection.Query<tableDto>("tools.spGetTableInfo", new { FullName = fullTableName }).ToList();
+        var sourceInfo = sourceConnection.Query<tableDto>(Queries.GetTableInfo, new { FullName = fullTableName }).ToList();
+        var destinationInfo = sourceConnection.Query<tableDto>(Queries.GetTableInfo, new { FullName = fullTableName }).ToList();
         return (sourceInfo, destinationInfo);
 
     }

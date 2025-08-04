@@ -65,110 +65,36 @@ dotnet add package Diffinity
 The application's behavior is configured directly in the `Program.cs` file. You can modify the `Main` method to change the comparison options.
 
 
-## Usage
-### Example Usage of the Library
+## Example Usage
 
 ```csharp
-using Diffinity;
-
-var result = DbComparer.CompareProcs(
-    new DbServer("Source", sourceCs),
-    new DbServer("Dest", destinationCs),
-    "output-folder",
-    ComparerAction.DoNotApplyChanges,
-    DbObjectFilter.ShowUnchanged
-);
-```
-### Example Usage of the Console Driver
-
-Here is the default configuration in `Program.cs`:
-
-```csharp
-using Microsoft.Data.SqlClient;
-using Serilog;
 using Diffinity;
 using System.Diagnostics;
-using Diffinity.HtmlHelper;
 
-namespace Driver;
-public class Program
+internal class Program
 {
-    private const string OutputFolder = @"Diffinity-output";
-    static readonly string SourceDatabase = "Source";
-    static readonly string DestinationDatabase = "Destination";
-    static readonly string SourceConnectionString = Environment.GetEnvironmentVariable("sourceCs");
-    static readonly string DestinationConnectionString = Environment.GetEnvironmentVariable("destinationCs");
-    public static void Main(string[] args)
+    static void Main(string[] args)
     {
-        Log.Logger = new LoggerConfiguration()
-            .WriteTo.Console()
-            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
-            .CreateLogger();
-
-        #region environment variable validation and database connection checks at startup
-        // Check if required environment variables are set
-        if (string.IsNullOrWhiteSpace(SourceConnectionString) || string.IsNullOrWhiteSpace(DestinationConnectionString))
-        {
-            Console.Error.WriteLine("Error: One or both required environment variables are missing.");
-            return;
-        }
-
-        // Attempt to connect to the source database
-        try
-        {
-            using var sourceConn = new SqlConnection(SourceConnectionString);
-            sourceConn.Open();
-            Console.WriteLine("Connected to source database.");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine("Failed to connect to source database: " + ex.Message);
-            return;
-        }
-
-        // Attempt to connect to the destination database
-        try
-        {
-            using var destConn = new SqlConnection(DestinationConnectionString);
-            destConn.Open();
-            Console.WriteLine("Connected to destination database.");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine("Failed to connect to destination database: " + ex.Message);
-            return;
-        }
+        var MyDbV1 = new DbServer("My Db V1", Environment.GetEnvironmentVariable("db_v1_cs"));
+        var MyDbV2 = new DbServer("My Db V2", Environment.GetEnvironmentVariable("db_v2_cs"));
+        string IndexPage = DbComparer.Compare(MyDbV1, MyDbV2);
+        #region Optional:
+        // You can optionally pass any of the following parameters:
+        // logger: your custom ILogger instance
+        // outputFolder: path to save the results (string)
+        // makeChange: whether to apply changes (ComparerAction.ApplyChanges,ComparerAction.DoNotApplyChanges)
+        // filter: filter rules (DbObjectFilter.ShowUnchanged,DbObjectFilter.HideUnchanged)
+        // run: execute comparison on specific dbObject(Run.Proc,Run.View,Run.Table,Run.ProcView,Run.ProcTable,Run.ViewTable,Run.All)
+        //
+        // Example:
+        // string IndexPage = DbComparer.Compare(MyDbV1, MyDbV2, logger: myLogger, outputFolder: "customPath", makeChange: true);
         #endregion
-
-        DbServer sourceDb = new DbServer(SourceDatabase, SourceConnectionString);
-        DbServer destinationDb = new DbServer(DestinationDatabase, DestinationConnectionString);
-
-        var sw = new Stopwatch();
-        sw.Start();
-        string procIndexPath = DbComparer.CompareProcs(
-            sourceDb
-            , destinationDb
-            , OutputFolder
-            , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
-            , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
-        );
-        string viewIndexPath = DbComparer.CompareViews(
-            sourceDb
-            , destinationDb
-            , OutputFolder
-            , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
-            , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
-        );
-        string tableIndexpath = DbComparer.CompareTables(
-         sourceDb
-         , destinationDb
-         , OutputFolder
-         , ComparerAction.DoNotApplyChanges   // Set to ApplyChanges to update the destination DB
-         , DbObjectFilter.HideUnchanged       // Set to ShowUnchangedProcs for a full report
-     );
-        HtmlReportWriter.WriteIndexSummary(SourceConnectionString, DestinationConnectionString, OutputFolder, procIndexPath, viewIndexPath, tableIndexpath);
-        sw.Stop();
-        Console.WriteLine($"Elapsed time: {sw} ms");
+        var psi = new ProcessStartInfo
+        {
+            FileName = IndexPage,
+            UseShellExecute = true
+        };
+        Process.Start(psi);
     }
 }
 ```
@@ -176,15 +102,22 @@ The HTML report is generated in the `Diffinity-output` folder by default.
 
 ### Configuration Options
 
-The `Diffinity.CompareProcs, CompareViews and CompareTables` methods accept the following parameters:
+The `Diffinity.Compare` method accepts the following parameters:
 
 -   `sourceServer`: A `DbServer` object representing the source database.
 -   `destinationServer`: A `DbServer` object representing the destination database.
--   `outputFolder`: The directory where the HTML reports will be saved.
+-   `logger` (optional): An `ILogger` instance for logging output. If not provided, a default logger is used.
+-   `outputFolder` (optional): The `directory` where the generated HTML comparison reports will be saved. Defaults to a predefined Diffinity-output if not specified.`
 -   `makeChange`: A `ComparerAction` enum that specifies whether to apply changes (`ApplyChanges`) or not (`DoNotApplyChanges`).
 -   `filter`: A `DbObjectFilter` enum that determines whether to include unchanged procedures in the report (`ShowUnchanged`) or hide them (`HideUnchanged`).
-
-
+-   `run`: A Run `enum` value indicating which database objects to compare, if not specified, default is All:
+    -   `Proc`: Compare only stored procedures.
+    -   `View`: Compare only views.
+    -   `Table`: Compare only tables.
+    -   `ProcView`: Compare stored procedures and views.
+    -   `ProcTable`: Compare stored procedures and tables.
+    -   `ViewTable`: Compare views and tables.
+    -   `All`: Compare procedures, views, and tables.
 
 ## API Overview
 
@@ -193,12 +126,13 @@ The core logic of the application is encapsulated in the `Diffinity` class and i
 ### `DbComparer` class
 
 This is the main class that orchestrates the comparison process.
-
--   **`CompareProcs(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, ProcsFilter filter)`**:
+-   **`Compare(DbServer sourceServer,DbServer destinationServer, ILogger? logger = null, string? outputFolder = null, ComparerAction? makeChange = ComparerAction.DoNotApplyChanges, DbObjectFilter? filter = DbObjectFilter.HideUnchanged,Run? run=Run.All)`**:
+    -   Compares selected database objects based on the Run option and returns a generated HTML summary report.
+-   **`CompareProcs(DbServer sourceServer, DbServer destinationServer,string outputFolder , ComparerAction makeChange, DbObjectFilter filter, Run run)`**:
     -   Compares stored procedures.
--   **`public static string CompareViews(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)`**
+-   **`CompareViews(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter, Run run)`**
     -   Compares SQL views.
--   **`public static string CompareTables(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)`**
+-   **`CompareTables(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter, Run run)`**
     -   Compares table definitions.
       
 -   **`Each Method`**:
@@ -269,5 +203,5 @@ The `Program.cs` file contains a detailed to-do list with plans for future enhan
 Feel free to pick an item from the to-do list if you're looking for a place to start contributing!
 
 <div align="center">
-  <sub><strong>Developed with :sparkling_heart: in Lebanon</strong></sub>
+  <sub><strong>Developed by Nada Husseini and Najat Bdeir with :sparkling_heart: in Lebanon</strong></sub>
 </div>

@@ -3,6 +3,8 @@ using Diffinity.ProcHelper;
 using Diffinity.TableHelper;
 using Diffinity.ViewHelper;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
+
 
 namespace Diffinity;
 public enum ComparerAction
@@ -15,10 +17,85 @@ public enum DbObjectFilter
     ShowUnchanged,
     HideUnchanged
 }
+public enum Run
+{
+    Proc,
+    View,
+    Table,
+    ProcView,
+    ProcTable,
+    ViewTable,
+    All
+}
 public record DbServer(string name, string connectionString);
 public class DbComparer : DbObjectHandler
 {
-    public static string CompareProcs(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)
+    
+    static readonly string _outputFolder = @"Diffinity-output";
+    static DbComparer()
+    {
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .WriteTo.Console()
+            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
+            .CreateLogger();
+    }
+    public static string Compare(DbServer sourceServer,DbServer destinationServer, ILogger? logger = null, string? outputFolder = null, ComparerAction? makeChange = ComparerAction.DoNotApplyChanges, DbObjectFilter? filter = DbObjectFilter.HideUnchanged,Run? run=Run.All)
+    {
+        /// <summary>
+        /// Executes comparison of database object types based on the specified Run option and returns the corresponding summary report.
+        /// </summary>
+        if (outputFolder == null) { outputFolder = _outputFolder; }
+        if (logger == null) { logger = Log.Logger; }
+
+        switch (run)
+        {
+            case Run.Proc:
+                {
+                    string ProceduresIndex = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value,run.Value);
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, procIndexPath: ProceduresIndex);
+                }
+            case Run.View:
+                {
+                    string ViewsIndex = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value,run.Value);
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, viewIndexPath: ViewsIndex);
+                }
+            case Run.Table:
+                {
+                    string TablesIndex = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value,run.Value);
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, tableIndexPath: TablesIndex);
+                }
+            case Run.ProcView:
+                {
+                    string ProceduresIndex = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value);
+                    string ViewsIndex = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value);
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, procIndexPath: ProceduresIndex, viewIndexPath: ViewsIndex);
+                }
+            case Run.ProcTable:
+                {
+                    string ProceduresIndex = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value);
+                    string TablesIndex = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value);
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, procIndexPath: ProceduresIndex, tableIndexPath: TablesIndex);
+                }
+            case Run.ViewTable:
+                {
+                    string ViewsIndex = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value);
+                    string TablesIndex = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value);
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, viewIndexPath: ViewsIndex, tableIndexPath: TablesIndex);
+                }
+            case Run.All:
+                {
+                    string ProceduresIndex = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value);
+                    string ViewsIndex = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value);
+                    string TablesIndex = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value);
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder,procIndexPath:ProceduresIndex, viewIndexPath: ViewsIndex, tableIndexPath: TablesIndex);
+                }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(run), run, "Invalid Run option");
+        }
+
+    }
+    public static string CompareProcs(DbServer sourceServer, DbServer destinationServer,string outputFolder , ComparerAction makeChange, DbObjectFilter filter,Run run)
     {
         /// <summary>
         /// Compares stored procedures between source and destination databases.
@@ -107,10 +184,10 @@ public class DbComparer : DbObjectHandler
         }
 
         // Step 9 - Generate summary report
-        HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(proceduresFolderPath, "index.html"), results, filter);
+        HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(proceduresFolderPath, "index.html"), results, filter,run);
         return ("Procedures/index.html");
     }
-    public static string CompareViews(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)
+    public static string CompareViews(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter,Run run)
     {
         /// <summary>
         /// Compares SQL views between source and destination databases.
@@ -199,10 +276,10 @@ public class DbComparer : DbObjectHandler
         }
 
         // Step 9 - Generate summary report
-        HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(viewsFolderPath, "index.html"), results, filter);
+        HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(viewsFolderPath, "index.html"), results, filter,run);
         return ("Views/index.html");
     }
-    public static string CompareTables(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter)
+    public static string CompareTables(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter,Run run)
     {
         /// <summary>
         /// Compares table column definitions between source and destination databases.
@@ -297,7 +374,7 @@ public class DbComparer : DbObjectHandler
         }
 
         // Step 10 - Generate summary report
-        HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(tablesFolderPath, "index.html"), results, filter);
+        HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(tablesFolderPath, "index.html"), results, filter,run);
         return ("Tables/index.html");
     }
     private static string MakeSafe(string name)

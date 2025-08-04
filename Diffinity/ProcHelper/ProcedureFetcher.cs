@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using Microsoft.Data.SqlClient;
+using Diffinity.DbHelper;
 
 
 namespace Diffinity.ProcHelper;
@@ -13,7 +14,7 @@ public static class ProcedureFetcher
     public static List<string> GetProcedureNames(string sourceConnectionString)
     {
         using var sourceConnection = new SqlConnection(sourceConnectionString);
-        var list = sourceConnection.Query<string>("tools.spGetProcsNames").AsList();
+        var list = sourceConnection.Query<string>(Queries.GetProceduresNames).AsList();
         return list;
     }
     
@@ -28,8 +29,8 @@ public static class ProcedureFetcher
         using SqlConnection sourceConnection      = new SqlConnection(sourceConnectionString);
         using SqlConnection destinationConnection = new SqlConnection(destinationConnectionString);
 
-        string sourceBody      = sourceConnection.QueryFirst<string>("tools.spGetProcBody",new { procName = procedureName });
-        string destinationBody = destinationConnection.QueryFirst<string>("tools.spGetProcBody", new { procName = procedureName });
+        string sourceBody      = sourceConnection.QueryFirst<string>(Queries.GetProcedureBody,new { procName = procedureName });
+        string destinationBody = destinationConnection.QueryFirst<string>(Queries.GetProcedureBody, new { procName = procedureName });
         return (sourceBody, destinationBody);
     }
 }

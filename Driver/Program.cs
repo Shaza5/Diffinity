@@ -1,87 +1,29 @@
-﻿using Microsoft.Data.SqlClient;
-using Serilog;
-using Diffinity;
+﻿using Diffinity;
 using System.Diagnostics;
-using Diffinity.HtmlHelper;
 
-namespace Driver;
-public class Program
+internal class Program
 {
-    private const string OutputFolder = @"Diffinity-output";
-    static readonly string SourceDatabase = "Source";
-    static readonly string DestinationDatabase = "Destination";
-    static readonly string SourceConnectionString = Environment.GetEnvironmentVariable("sourceCs");
-    static readonly string DestinationConnectionString = Environment.GetEnvironmentVariable("destinationCs");
-    public static void Main(string[] args)
+    static void Main(string[] args)
     {
-        Log.Logger = new LoggerConfiguration()
-            .WriteTo.Console()
-            .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
-            .CreateLogger();
-
-        #region environment variable validation and database connection checks at startup
-        // Check if required environment variables are set
-        if (string.IsNullOrWhiteSpace(SourceConnectionString) || string.IsNullOrWhiteSpace(DestinationConnectionString))
-        {
-            Console.Error.WriteLine("Error: One or both required environment variables are missing.");
-            return;
-        }
-
-        // Attempt to connect to the source database
-        try
-        {
-            using var sourceConn = new SqlConnection(SourceConnectionString);
-            sourceConn.Open();
-            Console.WriteLine("Connected to source database.");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine("Failed to connect to source database: " + ex.Message);
-            return;
-        }
-
-        // Attempt to connect to the destination database
-        try
-        {
-            using var destConn = new SqlConnection(DestinationConnectionString);
-            destConn.Open();
-            Console.WriteLine("Connected to destination database.");
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine("Failed to connect to destination database: " + ex.Message);
-            return;
-        }
+        var MyDbV1 = new DbServer("My Db V1", Environment.GetEnvironmentVariable("db_v1_cs"));
+        var MyDbV2 = new DbServer("My Db V2", Environment.GetEnvironmentVariable("db_v2_cs"));
+        string IndexPage = DbComparer.Compare(MyDbV1, MyDbV2);
+        #region Optional:
+        // You can optionally pass any of the following parameters:
+        // logger: your custom ILogger instance
+        // outputFolder: path to save the results (string)
+        // makeChange: whether to apply changes (ComparerAction.ApplyChanges,ComparerAction.DoNotApplyChanges)
+        // filter: filter rules (DbObjectFilter.ShowUnchanged,DbObjectFilter.HideUnchanged)
+        // run: execute comparison on specific dbObject(Run.Proc,Run.View,Run.Table,Run.ProcView,Run.ProcTable,Run.ViewTable,Run.All)
+        //
+        // Example:
+        // string IndexPage = DbComparer.Compare(MyDbV1, MyDbV2, logger: myLogger, outputFolder: "customPath", makeChange: true);
         #endregion
-
-        DbServer sourceDb = new DbServer(SourceDatabase, SourceConnectionString);
-        DbServer destinationDb = new DbServer(DestinationDatabase, DestinationConnectionString);
-
-        var sw = new Stopwatch();
-        sw.Start();
-        string procIndexPath = DbComparer.CompareProcs(
-            sourceDb
-            , destinationDb
-            , OutputFolder
-            , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
-            , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
-        );
-        string viewIndexPath = DbComparer.CompareViews(
-            sourceDb
-            , destinationDb
-            , OutputFolder
-            , ComparerAction.DoNotApplyChanges  // Set to ApplyChanges to update the destination DB
-            , DbObjectFilter.HideUnchanged      // Set to ShowUnchangedProcs for a full report
-        );
-        string tableIndexpath = DbComparer.CompareTables(
-         sourceDb
-         , destinationDb
-         , OutputFolder
-         , ComparerAction.DoNotApplyChanges   // Set to ApplyChanges to update the destination DB
-         , DbObjectFilter.HideUnchanged       // Set to ShowUnchangedProcs for a full report
-     );
-        HtmlReportWriter.WriteIndexSummary(SourceConnectionString, DestinationConnectionString, OutputFolder, procIndexPath, viewIndexPath, tableIndexpath);
-        sw.Stop();
-        Console.WriteLine($"Elapsed time: {sw} ms");
+        var psi = new ProcessStartInfo
+        {
+            FileName = IndexPage,
+            UseShellExecute = true
+        };
+        Process.Start(psi);
     }
 }

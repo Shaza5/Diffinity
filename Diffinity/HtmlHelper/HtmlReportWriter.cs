@@ -190,11 +190,7 @@ public static class HtmlReportWriter
 </head>
 <body>
     <h1>{MetaData} Comparison Summary</h1>
-    <nav class=""top-nav"">
-      <a href=""../Procedures/index.html"">Procedures</a>
-      <a href=""../Views/index.html"">Views</a>
-      <a href=""../Tables/index.html"">Tables</a>
-    </nav>
+    {nav}
     {NewTable}
     <table>
         <tr>
@@ -413,7 +409,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
     /// </summary>
-    public static void WriteIndexSummary(string sourceConnectionString,string destinationConnectionString, string outputPath, string procIndexPath, string viewIndexPath, string tableIndexPath)
+    public static string WriteIndexSummary(string sourceConnectionString, string destinationConnectionString, string outputPath, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null)
     {
         // Extract server and database names from connection strings
         var sourceBuilder = new SqlConnectionStringBuilder(sourceConnectionString);
@@ -428,9 +424,9 @@ public static class HtmlReportWriter
         string Date = date.ToString("MM/dd/yyyy hh:mm tt ") + "UTC";
 
         // Create links to individual index pages
-        string procsIndex = $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
-        string viewsIndex = $@"<a href=""{viewIndexPath}"" class=""btn"">Views</a>";
-        string tablesIndex = $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>";
+        string procsIndex = procIndexPath==null ? "": $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
+        string viewsIndex = viewIndexPath==null ? "" :$@"<a href=""{viewIndexPath}"" class=""btn"">Views</a>";
+        string tablesIndex = tableIndexPath == null ? "" : $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>";
 
         // Replace placeholders in the index template
         html.Append(IndexTemplate.Replace("{sourceServer}",sourceServer).Replace("{sourceDatabase}", sourceDatabase).Replace("{destinationServer}", destinationServer).Replace("{destinationDatabase}", destinationDatabase).Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex).Replace("{Date}", Date));
@@ -438,6 +434,7 @@ public static class HtmlReportWriter
 
         // Write to index.html
         File.WriteAllText(indexPath, html.ToString());
+        return indexPath;
     }
     #endregion
 
@@ -445,12 +442,12 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes a detailed summary report comparing objects (procedures, views, tables) between source and destination.
     /// </summary>
-    public static void WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<dbObjectResult> results, DbObjectFilter filter)
+    public static void WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<dbObjectResult> results, DbObjectFilter filter,Run run)
     {
         StringBuilder html = new();
         var result = results[0];
         string returnPage = Path.Combine("..", "index.html");
-        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type));
+        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}",BuildNav(run)));
 
         #region 1-Create the new table
         var newProcedures = results.Where(r => r.IsDestinationEmpty).ToList();
@@ -531,6 +528,56 @@ public static class HtmlReportWriter
         #endregion
 
         File.WriteAllText(summaryPath, html.ToString());
+        #region Local function
+        string BuildNav(Run run)
+        {
+            string proceduresPath = "../Procedures/index.html";
+            string viewsPath = "../Views/index.html";
+            string tablesPath= "../Tables/index.html";
+            var sb = new StringBuilder();
+            sb.AppendLine(@"<nav class=""top-nav"">");
+            switch (run)
+            {
+                case Run.Proc:
+                    sb.AppendLine($@"  <a href=""{proceduresPath}"">Procedures</a>");
+                    break;
+
+                case Run.View:
+                    sb.AppendLine($@"  <a href=""{viewsPath}"">Views</a>");
+                    break;
+
+                case Run.Table:
+                    sb.AppendLine($@"  <a href=""{tablesPath}"">Tables</a>");
+                    break;
+
+                case Run.ProcView:
+                    sb.AppendLine($@"  <a href=""{proceduresPath}"">Procedures</a>");
+                    sb.AppendLine($@"  <a href=""{viewsPath}"">Views</a>");
+                    break;
+
+                case Run.ProcTable:
+                    sb.AppendLine($@"  <a href=""{proceduresPath}"">Procedures</a>");
+                    sb.AppendLine($@"  <a href=""{tablesPath}"">Tables</a>");
+                    break;
+
+                case Run.ViewTable:
+                    sb.AppendLine($@"  <a href=""{viewsPath}"">Views</a>");
+                    sb.AppendLine($@"  <a href=""{tablesPath}"">Tables</a>");
+                    break;
+
+                case Run.All:
+                    sb.AppendLine($@"  <a href=""{proceduresPath}"">Procedures</a>");
+                    sb.AppendLine($@"  <a href=""{viewsPath}"">Views</a>");
+                    sb.AppendLine($@"  <a href=""{tablesPath}"">Tables</a>");
+                    break;
+
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(run), run, "Invalid Run option");
+            }
+            sb.AppendLine("</nav>");
+            return sb.ToString();
+        }
+        #endregion
     }
     #endregion
 
