@@ -7,6 +7,8 @@ using ColorCode;
 using System.Reflection;
 using System.Text;
 using static Diffinity.DbObjectHandler;
+using Microsoft.IdentityModel.Tokens;
+using System.Reflection.Metadata.Ecma335;
 
 
 
@@ -198,7 +200,7 @@ public static class HtmlReportWriter
             <th>{MetaData} Name</th>
             <th>{source} Original</th>
             <th>{destination} Original</th>
-            {differences}
+            <th>Changes</th>
         </tr>
     ";
     private const string BodyTemplate = @"
@@ -510,19 +512,7 @@ public static class HtmlReportWriter
             // Prepare file links
             string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
             string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>" : "—";
-            string differencesColumn = null;
-
-            // Add differences column only if file exists
-            if (item.DifferencesFile != null)
-            {
-                html.Replace("{differences}", "<th>Changes</th>");
-                differencesColumn = $@"<td><a href=""{item.DifferencesFile}"">View</a></td>";
-            }
-            else
-            {
-                html.Replace("{differences}", "");
-            }
-            ;
+            string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
             string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
             if ((item.IsEqual && filter == DbObjectFilter.ShowUnchanged) || !item.IsEqual)
@@ -532,7 +522,7 @@ public static class HtmlReportWriter
                     <td>{item.Name}</td>
                     <td>{sourceColumn}</td>
                     <td>{destinationColumn}</td>
-                    {differencesColumn}
+                    <td>{differencesColumn}</td>
                      </tr>");
                 Number++;
             }
@@ -605,14 +595,15 @@ public static class HtmlReportWriter
     public static void WriteBodyHtml(string filePath, string title, string body, string returnPage)
     {
         StringBuilder html = new StringBuilder();
-        html.AppendLine(BodyTemplate.Replace("{title}", title));
-        string escapedBody = EscapeHtml(body);
+        html.AppendLine(BodyTemplate.Replace("{title}", title)); 
+        string coloredCode = HighlightSql(body);
+        //string escapedBody = EscapeHtml(body);
 
         if (title.Contains("Table"))
         {
-            escapedBody = body;
+            coloredCode = body;
         }
-        string coloredCode = HighlightSql(escapedBody);
+      
 
         html.AppendLine($@"<body>
         <h1>{title}</h1>
@@ -785,6 +776,7 @@ public static class HtmlReportWriter
     /// </summary>
     static string HighlightSql(string sqlCode)
     {
+        if (sqlCode==null) return null;
         var colorizer = new CodeColorizer();
         string coloredCode = colorizer.Colorize(sqlCode, Languages.Sql).Replace(@"<div style=""color:Black;background-color:White;""><pre>", "").Replace("</div>", "");
         return coloredCode;
@@ -853,5 +845,5 @@ public static class HtmlReportWriter
 
     }
     #endregion
-
+    
 }

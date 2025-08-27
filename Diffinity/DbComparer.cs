@@ -140,6 +140,7 @@ public class DbComparer : DbObjectHandler
 
             bool isDestinationEmpty = string.IsNullOrWhiteSpace(destinationBody);
             bool isVisible = false;
+            bool isDifferencesVisible = false;
 
             // Step 6 - Write HTML reports if needed
             if ((areEqual && filter == DbObjectFilter.ShowUnchanged) || !areEqual)
@@ -150,10 +151,11 @@ public class DbComparer : DbObjectHandler
                 HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name}", sourceBody, returnPage);
                 HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name}", destinationBody, returnPage);
 
-              if (!isDestinationEmpty)
+              if (!isDestinationEmpty && !areEqual)
                 {
                     string differencesPath = Path.Combine(schemaFolder, differencesFile);
                     HtmlReportWriter.DifferencesWriter(differencesPath, sourceServer.name, destinationServer.name, sourceBody, destinationBody, "Differences", proc, returnPage);
+                    isDifferencesVisible = true;
                 }
                 isVisible = true;
             }
@@ -180,7 +182,7 @@ public class DbComparer : DbObjectHandler
                 IsEqual = areEqual,
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
-                DifferencesFile = Path.Combine(safeSchema, differencesFile),
+                DifferencesFile = isDifferencesVisible ? Path.Combine(safeSchema, differencesFile) : null,
                 NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
             });
         }
@@ -232,6 +234,7 @@ public class DbComparer : DbObjectHandler
 
             bool isDestinationEmpty =string.IsNullOrEmpty(destinationBody);
             bool isVisible = false;
+            bool isDifferencesVisible = false;
 
             // Step 6 - Write HTML reports if needed
             if ((areEqual && filter == DbObjectFilter.ShowUnchanged) || !areEqual)
@@ -241,11 +244,11 @@ public class DbComparer : DbObjectHandler
                 string destinationPath = Path.Combine(schemaFolder, destinationFile);
                 HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name}", sourceBody, returnPage);
                 HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name}", destinationBody, returnPage);
-                
-                if (!isDestinationEmpty)
+                if (!isDestinationEmpty && !areEqual)
                 {
                     string differencesPath = Path.Combine(schemaFolder, differencesFile);
                     HtmlReportWriter.DifferencesWriter(differencesPath, sourceServer.name, destinationServer.name, sourceBody, destinationBody, "Differences", view, returnPage);
+                    isDifferencesVisible = true;
                 }
                 isVisible = true;
             }
@@ -272,7 +275,7 @@ public class DbComparer : DbObjectHandler
                 IsEqual = areEqual,
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
-                DifferencesFile = Path.Combine(safeSchema, differencesFile),
+                DifferencesFile = isDifferencesVisible ? Path.Combine(safeSchema, differencesFile) : null,
                 NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
             });
         }
