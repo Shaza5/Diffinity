@@ -3,7 +3,7 @@ public static class DiffIgnoreLoader
 {
     public static HashSet<string> LoadIgnoredObjects()
     {
-        string filePath = "diffignore.txt";
+        string filePath = ".diffignore";
 
         if (!File.Exists(filePath))
             return new HashSet<string>(StringComparer.OrdinalIgnoreCase);
