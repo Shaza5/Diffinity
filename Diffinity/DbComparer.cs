@@ -49,7 +49,7 @@ public class DbComparer : DbObjectHandler
         if (logger == null) { logger = Log.Logger; }
 
         var ignoredObjects = DiffIgnoreLoader.LoadIgnoredObjects();
-
+        
         switch (run)
         {
             case Run.Proc:
@@ -110,8 +110,8 @@ public class DbComparer : DbObjectHandler
         Directory.CreateDirectory(proceduresFolderPath);
 
         // Step 2 - Retrieve procedure names from the source server
-        List<string> procedures = ProcedureFetcher.GetProcedureNames(sourceServer.connectionString).Where(p => !ignoredObjects.Contains(p)).ToList();
-   
+        List<string> procedures = ProcedureFetcher.GetProcedureNames(sourceServer.connectionString).ToList();
+
         List<dbObjectResult> results = new();
 
         Serilog.Log.Information("Procs:");
@@ -119,6 +119,11 @@ public class DbComparer : DbObjectHandler
         // Step 3 - Loop over each procedure and compare
         foreach (var proc in procedures)
         {
+            if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? proc.StartsWith(ignore[..^2] + ".") : proc == ignore))
+            {
+                Log.Information($"{proc}: Ignored");
+                continue;
+            }
             string[] parts = proc.Split('.');
             string schema = parts.Length > 1 ? parts[0] : "dbo"; 
             string safeSchema = MakeSafe(schema);
@@ -204,7 +209,7 @@ public class DbComparer : DbObjectHandler
         Directory.CreateDirectory(viewsFolderPath);
 
         // Step 2 - Retrieve view names from the source server
-        List<string> views = ViewFetcher.GetViewsNames(sourceServer.connectionString).Where(p => !ignoredObjects.Contains(p)).ToList();
+        List<string> views = ViewFetcher.GetViewsNames(sourceServer.connectionString).ToList();
 
         List<dbObjectResult> results = new();
 
@@ -213,6 +218,11 @@ public class DbComparer : DbObjectHandler
         // Step 3 - Loop over each view and compare
         foreach (var view in views)
         {
+            if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? view.StartsWith(ignore[..^2] + ".") : view == ignore))
+            {
+                Log.Information($"{view}: Ignored");
+                continue;
+            }
             string[] parts = view.Split('.');
             string schema = parts.Length > 1 ? parts[0] : "dbo"; 
             string safeSchema = MakeSafe(schema);
@@ -297,7 +307,7 @@ public class DbComparer : DbObjectHandler
         Directory.CreateDirectory(tablesFolderPath);
 
         // Step 2 - Retrieve table names from the source server
-        List<string> tables = TableFetcher.GetTablesNames(sourceServer.connectionString).Where(p => !ignoredObjects.Contains(p)).ToList();
+        List<string> tables = TableFetcher.GetTablesNames(sourceServer.connectionString).ToList();
 
         List<dbObjectResult> results = new();
         bool areEqual = false;
@@ -307,6 +317,11 @@ public class DbComparer : DbObjectHandler
         // Step 3 - Loop over each table and compare
         foreach (var table in tables)
         {
+            if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? table.StartsWith(ignore[..^2] + ".") : table == ignore))
+            {
+                Log.Information($"{table}: Ignored");
+                continue;
+            }
             string[] parts = table.Split('.');
             string schema = parts.Length > 1 ? parts[0] : "dbo";
             string safeSchema = MakeSafe(schema);
