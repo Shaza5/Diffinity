@@ -9,6 +9,7 @@ public static class TableComparerAndUpdater
     /// </summary>
     public static (bool, List<string>) ComparerAndUpdater(string destinationConnectionString, tableDto sourceTable, tableDto destinationTable, string fullTableName, ComparerAction makeChange)
     {
+        if (destinationTable == null) return (false,null); 
         using SqlConnection destinationConnection = new SqlConnection(destinationConnectionString);
         destinationConnection.Open();
 

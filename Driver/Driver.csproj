@@ -8,13 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Diffinity" Version="1.0.5" />
+    <PackageReference Include="Diffinity" Version="1.0.6" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />
     <PackageReference Include="Serilog" Version="4.3.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Diffinity\Diffinity.csproj" />
   </ItemGroup>
 
 </Project>

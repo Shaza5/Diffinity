@@ -28,7 +28,7 @@ public class TableFetcher
         using SqlConnection sourceConnection = new SqlConnection(sourceConnectionString);
         using SqlConnection destinationConnection = new SqlConnection(destinationConnectionString);
         var sourceInfo = sourceConnection.Query<tableDto>(Queries.GetTableInfo, new { FullName = fullTableName }).ToList();
-        var destinationInfo = sourceConnection.Query<tableDto>(Queries.GetTableInfo, new { FullName = fullTableName }).ToList();
+        var destinationInfo = destinationConnection.Query<tableDto>(Queries.GetTableInfo, new { FullName = fullTableName }).ToList();
         return (sourceInfo, destinationInfo);
 
     }
