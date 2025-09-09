@@ -33,6 +33,7 @@ public class DbComparer : DbObjectHandler
 {
 
     static readonly string _outputFolder = @"Diffinity-output";
+    static readonly ParallelOptions _parallelOptions = new() { MaxDegreeOfParallelism = 4 };
     static DbComparer()
     {
         Log.Logger = new LoggerConfiguration()
@@ -144,12 +145,12 @@ public class DbComparer : DbObjectHandler
         Serilog.Log.Information("Procs:");
 
         // Step 4 - Loop over each procedure and compare
-        foreach (var proc in procedures)
+        Parallel.ForEach(procedures, _parallelOptions, proc =>
         {
             if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? proc.StartsWith(ignore[..^2] + ".") : proc == ignore))
             {
                 Log.Information($"{proc}: Ignored");
-                continue;
+                return;
             }
             string[] parts = proc.Split('.');
             string schema = parts.Length > 1 ? parts[0] : "dbo";
@@ -217,7 +218,7 @@ public class DbComparer : DbObjectHandler
                 DifferencesFile = isDifferencesVisible ? Path.Combine(safeSchema, differencesFile) : null,
                 NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
             });
-        }
+        });
 
         // Step 10 - Generate summary report
         (string procReportHtml, string procCount) = HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(proceduresFolderPath, "index.html"), results, filter, run, isIgnoredEmpty,ignoredCount);
@@ -254,12 +255,12 @@ public class DbComparer : DbObjectHandler
         Serilog.Log.Information("Views:");
 
         // Step 4 - Loop over each view and compare
-        foreach (var view in views)
+        Parallel.ForEach(views, _parallelOptions, view =>
         {
             if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? view.StartsWith(ignore[..^2] + ".") : view == ignore))
             {
                 Log.Information($"{view}: Ignored");
-                continue;
+                return;
             }
             string[] parts = view.Split('.');
             string schema = parts.Length > 1 ? parts[0] : "dbo";
@@ -326,7 +327,7 @@ public class DbComparer : DbObjectHandler
                 DifferencesFile = isDifferencesVisible ? Path.Combine(safeSchema, differencesFile) : null,
                 NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
             });
-        }
+        });
 
         // Step 10 - Generate summary report
         (string viewReportHtml, string viewCount) = HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(viewsFolderPath, "index.html"), results, filter, run,isIgnoredEmpty,ignoredCount);
@@ -363,12 +364,12 @@ public class DbComparer : DbObjectHandler
         Serilog.Log.Information("Tables:");
 
         // Step 4 - Loop over each table and compare
-        foreach (var table in tables)
+        Parallel.ForEach(tables, _parallelOptions, table =>
         {
             if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? table.StartsWith(ignore[..^2] + ".") : table == ignore))
             {
                 Log.Information($"{table}: Ignored");
-                continue;
+                return;
             }
             string[] parts = table.Split('.');
             string schema = parts.Length > 1 ? parts[0] : "dbo";
@@ -381,15 +382,43 @@ public class DbComparer : DbObjectHandler
             (List<tableDto> sourceInfo, List<tableDto> destinationInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, table);
             bool isDestinationEmpty = destinationInfo.IsNullOrEmpty();
 
+            int sourceColumnCount = sourceInfo.Count;
+            int destinationColumnCount = destinationInfo.Count;
+            int minCount = Math.Min(sourceColumnCount, destinationColumnCount);
             // Step 6 - Compare each column
-            for (int i = 0; i < sourceInfo.Count; i++)
+            for (int i = 0; i < minCount; i++)
             {
+                if (isDestinationEmpty)
+                {
+                    Serilog.Log.Information($"{table}: Changes detected");
+                    allDifferences.Add(table);
+                    continue;
+                }
+
                 var tableDto = sourceInfo[i];
                 (areEqual, List<string> differences) = TableComparerAndUpdater.ComparerAndUpdater(destinationServer.connectionString, sourceInfo[i], destinationInfo[i], table, makeChange);
                 if (!areEqual)
                 {
                     allDifferences.AddRange(differences);
                     Serilog.Log.Information($"{table}: Changes detected");
+                }
+            }
+            // Handle extra columns in source
+            if (sourceColumnCount > destinationColumnCount)
+            {
+                for (int i = destinationColumnCount; i < sourceColumnCount; i++)
+                {
+                    allDifferences.Add(sourceInfo[i].columnName);
+                    areEqual = false;
+                }
+            }
+            // Handle extra columns in destination
+            if (destinationColumnCount > sourceColumnCount)
+            {
+                for (int i = sourceColumnCount; i < destinationColumnCount; i++)
+                {
+                    allDifferences.Add(destinationInfo[i].columnName);
+                    areEqual = false;
                 }
             }
             if (areEqual)
@@ -439,10 +468,10 @@ public class DbComparer : DbObjectHandler
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
                 NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
             });
-        }
+        });
 
         // Step 11 - Generate summary report
-        (string tableHtmlReport, string tablesCount) = HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(tablesFolderPath, "index.html"), results, filter, run,isIgnoredEmpty,ignoredCount);
+        (string tableHtmlReport, string tablesCount) = HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(tablesFolderPath, "index.html"), results, filter, run, isIgnoredEmpty, ignoredCount);
         return new summaryReportDto
         {
             path = "Tables/index.html",
