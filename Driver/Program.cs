@@ -7,7 +7,7 @@ internal class Program
     {
         var MyDbV1 = new DbServer("My Db V1", Environment.GetEnvironmentVariable("db_v1_cs"));
         var MyDbV2 = new DbServer("My Db V2", Environment.GetEnvironmentVariable("db_v2_cs"));
-        string IndexPage = DbComparer.Compare(MyDbV1, MyDbV2,run:Run.Table);
+        string IndexPage = DbComparer.Compare(MyDbV1, MyDbV2);
         #region Optional:
         // You can optionally pass any of the following parameters:
         // logger: your custom ILogger instance
