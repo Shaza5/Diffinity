@@ -1,14 +1,15 @@
-﻿using Diffinity.TableHelper;
+﻿using ColorCode;
+using Diffinity.TableHelper;
 using DiffPlex;
 using DiffPlex.DiffBuilder;
 using DiffPlex.DiffBuilder.Model;
 using Microsoft.Data.SqlClient;
-using ColorCode;
-using System.Reflection;
-using System.Text;
-using static Diffinity.DbObjectHandler;
 using Microsoft.IdentityModel.Tokens;
+using System.Reflection;
 using System.Reflection.Metadata.Ecma335;
+using System.Text;
+using System.Text.RegularExpressions;
+using static Diffinity.DbObjectHandler;
 
 
 
@@ -171,6 +172,21 @@ public static class HtmlReportWriter
         .top-nav a:hover::after {
             transform: scaleX(1);
         }
+        .copy-btn {
+            float: right;
+            margin: 0px 12px 0px 50px;
+            background-color: #EC317F;
+            color: white;
+            border: none;
+            font-size : 15px;
+            padding: 10px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
+        }
+        .copy-btn:hover {
+              background-color: #b42a68;
+        }
         .return-btn {
             display: block;
             width: 220px;
@@ -193,6 +209,7 @@ public static class HtmlReportWriter
 </head>
 <body>
     <h1>{MetaData} Comparison Summary</h1>
+    <h1>[{source}] vs [{destination}] </h1>
     {nav}
     {NewTable}
     <table>
@@ -591,23 +608,50 @@ public static class HtmlReportWriter
                     <th></th>
                     <th>{result.Type} Name</th>
                     <th></th>
+                    <th></th>
                 </tr>");
 
             int newCount = 1;
             foreach (var item in newObjects)
             {
-                if (item.SourceFile == null) continue;
+               if (item.SourceFile == null) continue;
+
+                string sourceBody = item.Type == "Table" ? PrintTableInfo(item.SourceTableInfo, new List<string>()) : item.SourceBody;
+     
+
                 string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
+                string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">Copy</button><br>
+                       <span class=""copy-target"" style=""display:none;"">{sourceBody}</span>";
+                
                 newTable.Append($@"<tr>
                                 <td>{newCount}</td>
                                 <td>{item.Name}</td>
                                 <td>{sourceLink}</td>
+                                <td>{copyButton}</td>
                                 </tr>");
                 newCount++;
             }
 
             newTable.Append("</table><br><br>");
+            newTable.AppendLine(
+                @"<script>
+                    function copyPane(button) {
+                        const container = button.closest('tr');
+                        const codeBlock = container.querySelector('.copy-target');
+                        const text = codeBlock?.innerText.trim();
+
+                        navigator.clipboard.writeText(text).then(() => {
+                            button.textContent = 'Copied!';
+                            setTimeout(() => button.textContent = 'Copy', 2000);
+                        }).catch(err => {
+                            console.error('Copy failed:', err);
+                            alert('Failed to copy!');
+                        });
+                     }
+                </script>"
+            );
             html.Replace("{NewTable}", newTable.ToString());
+     
         }
         else
         {
@@ -745,20 +789,20 @@ public static class HtmlReportWriter
             <span class=""copy-target"">{coloredCode}</span>
             </div>
             
-                  <script>
-            function copyPane(button) {{
-                const container = button.closest('div');
-                const codeBlock = container.querySelector('.copy-target');
-                const text = codeBlock?.innerText.trim();
+            <script>
+                function copyPane(button) {{
+                    const container = button.closest('div');
+                    const codeBlock = container.querySelector('.copy-target');
+                    const text = codeBlock?.innerText.trim();
             
-                navigator.clipboard.writeText(text).then(() => {{
-                    button.textContent = 'Copied!';
-                    setTimeout(() => button.textContent = 'Copy', 2000);
-                }}).catch(err => {{
-                    console.error('Copy failed:', err);
-                    alert('Failed to copy!');
-                }});
-            }}
+                    navigator.clipboard.writeText(text).then(() => {{
+                        button.textContent = 'Copied!';
+                        setTimeout(() => button.textContent = 'Copy', 2000);
+                    }}).catch(err => {{
+                        console.error('Copy failed:', err);
+                        alert('Failed to copy!');
+                    }});
+                }}
             </script>
             <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
             </body>

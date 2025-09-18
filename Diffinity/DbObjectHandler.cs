@@ -1,4 +1,5 @@
 ﻿using Dapper;
+using Diffinity.TableHelper;
 using Microsoft.Data.SqlClient;
 using System.Security.Cryptography;
 using System.Text;
@@ -107,6 +108,9 @@ public class DbObjectHandler
         public string SourceFile { get; set; }
         public string DestinationFile { get; set; }
         public string? DifferencesFile { get; set; }
+        public string? SourceBody { get; set; }
+        public List<tableDto> SourceTableInfo { get; set; }
         public string? NewFile { get; set; } // null if not altered
     }
+ 
 }

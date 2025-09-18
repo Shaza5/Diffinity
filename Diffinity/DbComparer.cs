@@ -213,13 +213,14 @@ public class DbComparer : DbObjectHandler
                 Name = proc,
                 IsDestinationEmpty = isDestinationEmpty,
                 IsEqual = areEqual,
+                SourceBody = isDestinationEmpty? sourceBody : null,
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
                 DifferencesFile = isDifferencesVisible ? Path.Combine(safeSchema, differencesFile) : null,
                 NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
             });
         });
-
+        
         // Step 10 - Generate summary report
         (string procReportHtml, string procCount) = HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(proceduresFolderPath, "index.html"), results, filter, run, isIgnoredEmpty,ignoredCount);
         return new summaryReportDto
@@ -322,6 +323,7 @@ public class DbComparer : DbObjectHandler
                 Name = view,
                 IsDestinationEmpty = isDestinationEmpty,
                 IsEqual = areEqual,
+                SourceBody = isDestinationEmpty? sourceBody : null,
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
                 DifferencesFile = isDifferencesVisible ? Path.Combine(safeSchema, differencesFile) : null,
@@ -464,6 +466,7 @@ public class DbComparer : DbObjectHandler
                 Name = table,
                 IsDestinationEmpty = isDestinationEmpty,
                 IsEqual = areEqual,
+                SourceTableInfo = sourceInfo,
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
                 NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
