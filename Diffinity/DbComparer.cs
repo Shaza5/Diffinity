@@ -33,7 +33,7 @@ public class DbComparer : DbObjectHandler
 {
 
     static readonly string _outputFolder = @"Diffinity-output";
-    static readonly ParallelOptions _parallelOptions = new() { MaxDegreeOfParallelism = 4 };
+    
     static DbComparer()
     {
         Log.Logger = new LoggerConfiguration()
@@ -42,7 +42,7 @@ public class DbComparer : DbObjectHandler
             .WriteTo.File("logs/log.txt", rollingInterval: RollingInterval.Day)
             .CreateLogger();
     }
-    public static string Compare(DbServer sourceServer, DbServer destinationServer, ILogger? logger = null, string? outputFolder = null, ComparerAction? makeChange = ComparerAction.DoNotApplyChanges, DbObjectFilter? filter = DbObjectFilter.HideUnchanged, Run? run = Run.All)
+    public static string Compare(DbServer sourceServer, DbServer destinationServer, int threadCount = 4, ILogger? logger = null, string? outputFolder = null, ComparerAction? makeChange = ComparerAction.DoNotApplyChanges, DbObjectFilter? filter = DbObjectFilter.HideUnchanged, Run? run = Run.All)
     {
         /// <summary>
         /// Executes comparison of database object types based on the specified Run option and returns the corresponding summary report.
@@ -59,29 +59,29 @@ public class DbComparer : DbObjectHandler
         {
             case Run.Proc:
                 {
-                    ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects);
+                    ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(ProcReport.fullPath, ProcReport.html.Replace("{procsCount}", ProcReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{procsCount}", ProcReport.count));
                     return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder,ignoredReport.path, procIndexPath: ProcReport.path);
                 }
             case Run.View:
                 {
-                    ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects);
+                    ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(ViewReport.fullPath, ViewReport.html.Replace("{viewsCount}", ViewReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{viewsCount}", ViewReport.count));
                     return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder,ignoredReport.path, viewIndexPath: ViewReport.path);
                 }
             case Run.Table:
                 {
-                    TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects);
+                    TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(TableReport.fullPath, TableReport.html.Replace("{tablesCount}", TableReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{tablesCount}", TableReport.count));
                     return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder,ignoredReport.path, tableIndexPath: TableReport.path);
                 }
             case Run.ProcView:
                 {
-                    ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects);
-                    ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects);
+                    ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
+                    ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(ProcReport.fullPath, ProcReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count));
                     File.WriteAllText(ViewReport.fullPath, ViewReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count));
@@ -89,8 +89,8 @@ public class DbComparer : DbObjectHandler
                 }
             case Run.ProcTable:
                 {
-                    ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects);
-                    TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects);
+                    ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
+                    TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(ProcReport.fullPath, ProcReport.html.Replace("{procsCount}", ProcReport.count).Replace("{tablesCount}", TableReport.count));
                     File.WriteAllText(TableReport.fullPath, TableReport.html.Replace("{procsCount}", ProcReport.count).Replace("{tablesCount}", TableReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{procsCount}", ProcReport.count).Replace("{tablesCount}", TableReport.count));
@@ -98,8 +98,8 @@ public class DbComparer : DbObjectHandler
                 }
             case Run.ViewTable:
                 {
-                    ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects);
-                    TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects);
+                    ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
+                    TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(ViewReport.fullPath, ViewReport.html.Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
                     File.WriteAllText(TableReport.fullPath, TableReport.html.Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
@@ -107,9 +107,9 @@ public class DbComparer : DbObjectHandler
                 }
             case Run.All:
                 {
-                    ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects);
-                    ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects);
-                    TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects);
+                    ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
+                    ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
+                    TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(ProcReport.fullPath, ProcReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
                     File.WriteAllText(ViewReport.fullPath, ViewReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
                     File.WriteAllText(TableReport.fullPath, TableReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
@@ -121,8 +121,9 @@ public class DbComparer : DbObjectHandler
         }
 
     }
-    public static summaryReportDto CompareProcs(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter, Run run, HashSet<string> ignoredObjects)
+    public static summaryReportDto CompareProcs(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter, Run run, HashSet<string> ignoredObjects, int threadCount)
     {
+        ParallelOptions parallelOptions = new() { MaxDegreeOfParallelism = threadCount };
         /// <summary>
         /// Compares stored procedures between source and destination databases.
         /// Generates HTML reports for differences and optionally applies updates to the destination.
@@ -145,7 +146,7 @@ public class DbComparer : DbObjectHandler
         Serilog.Log.Information("Procs:");
 
         // Step 4 - Loop over each procedure and compare
-        Parallel.ForEach(procedures, _parallelOptions, proc =>
+        Parallel.ForEach(procedures, parallelOptions, proc =>
         {
             if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? proc.StartsWith(ignore[..^2] + ".") : proc == ignore))
             {
@@ -232,8 +233,9 @@ public class DbComparer : DbObjectHandler
 
         };
     }
-    public static summaryReportDto CompareViews(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter, Run run, HashSet<string> ignoredObjects)
+    public static summaryReportDto CompareViews(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter, Run run, HashSet<string> ignoredObjects, int threadCount)
     {
+        ParallelOptions parallelOptions = new() { MaxDegreeOfParallelism = threadCount };
         /// <summary>
         /// Compares SQL views between source and destination databases.
         /// Generates HTML reports for differences and optionally applies updates to the destination.
@@ -256,7 +258,7 @@ public class DbComparer : DbObjectHandler
         Serilog.Log.Information("Views:");
 
         // Step 4 - Loop over each view and compare
-        Parallel.ForEach(views, _parallelOptions, view =>
+        Parallel.ForEach(views, parallelOptions, view =>
         {
             if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? view.StartsWith(ignore[..^2] + ".") : view == ignore))
             {
@@ -341,8 +343,9 @@ public class DbComparer : DbObjectHandler
             count = viewCount
         };
     }
-    public static summaryReportDto CompareTables(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter, Run run, HashSet<string> ignoredObjects)
+    public static summaryReportDto CompareTables(DbServer sourceServer, DbServer destinationServer, string outputFolder, ComparerAction makeChange, DbObjectFilter filter, Run run, HashSet<string> ignoredObjects, int threadCount)
     {
+        ParallelOptions parallelOptions = new() { MaxDegreeOfParallelism = threadCount };
         /// <summary>
         /// Compares table column definitions between source and destination databases.
         /// Generates HTML reports for schema differences and optionally applies updates to the destination.
@@ -366,7 +369,7 @@ public class DbComparer : DbObjectHandler
         Serilog.Log.Information("Tables:");
 
         // Step 4 - Loop over each table and compare
-        Parallel.ForEach(tables, _parallelOptions, table =>
+        Parallel.ForEach(tables, parallelOptions, table =>
         {
             if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? table.StartsWith(ignore[..^2] + ".") : table == ignore))
             {
