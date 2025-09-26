@@ -9,7 +9,7 @@ internal class Program
         var Corewell = new DbServer("Corewell", Environment.GetEnvironmentVariable("connectionString"));
         var CMH      = new DbServer("CMH", Environment.GetEnvironmentVariable("cmhCs"));
         
-        string IndexPage = DbComparer.Compare(DEV002,CMH, threadCount:20);
+        string IndexPage = DbComparer.Compare(DEV002,CMH);
         #region Optional
         // You can optionally pass any of the following parameters:
         // logger: your custom ILogger instance
