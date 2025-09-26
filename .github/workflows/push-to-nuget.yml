@@ -1,0 +1,82 @@
+name: Publish Diffinity NuGet Package
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+env:
+  PROJECT_PATH: Diffinity/Diffinity.csproj
+  PACKAGE_NAME: Diffinity
+
+jobs:
+  build:
+    runs-on: windows-2025
+    outputs:
+      version: ${{ env.VERSION }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Bump version
+        id: bump_version
+        shell: pwsh
+        run: |
+          # Increment patch version automatically
+          $currentVersion = (Get-Content -Path ${{ env.PROJECT_PATH }} -Raw) -match '<Version>(.*?)<\/Version>' | Out-Null; $matches[1]
+          $parts = $matches[1].Split('.')
+          $parts[2] = [int]$parts[2] + 1
+          $newVersion = "$($parts[0]).$($parts[1]).$($parts[2])"
+          
+          # Update the csproj version
+          (Get-Content ${{ env.PROJECT_PATH }}) -replace "<Version>.*?</Version>", "<Version>$newVersion</Version>" | Set-Content ${{ env.PROJECT_PATH }}
+
+          echo "VERSION=$newVersion" >> $env:GITHUB_ENV
+          echo "Using version $newVersion"
+
+      - name: Restore dependencies
+        run: dotnet restore ${{ env.PROJECT_PATH }}
+
+      - name: Build
+        run: dotnet build ${{ env.PROJECT_PATH }} --configuration Release
+
+      - name: Pack
+        run: dotnet pack ${{ env.PROJECT_PATH }} --no-build --configuration Release -p:PackageVersion=${{ env.VERSION }} --output ./artifacts
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-package
+          path: ./artifacts/*.nupkg
+
+  push_to_nuget:
+    runs-on: windows-2025
+    needs: build
+    steps:
+      - name: Download package artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nuget-package
+          path: ./artifacts
+
+      - name: Push to NuGet.org
+        shell: pwsh
+        run: |
+          # Find the first .nupkg file in the artifacts folder
+          $pkg = Get-ChildItem -Path ./artifacts -Filter *.nupkg | Select-Object -First 1
+          if ($pkg -eq $null) {
+              throw "No .nupkg file found in ./artifacts!"
+          }
+          Write-Host "Pushing package: $($pkg.FullName)"
+          
+          # Push to NuGet.org
+          dotnet nuget push $pkg.FullName `
+            --api-key ${{ secrets.NUGET_API_KEY }} `
+            --source https://api.nuget.org/v3/index.json
