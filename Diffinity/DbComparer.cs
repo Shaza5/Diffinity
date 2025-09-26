@@ -4,6 +4,7 @@ using Diffinity.TableHelper;
 using Diffinity.ViewHelper;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
+using System.Diagnostics;
 using static Diffinity.DbComparer;
 
 
@@ -55,58 +56,74 @@ public class DbComparer : DbObjectHandler
         summaryReportDto ProcReport;
         summaryReportDto ViewReport;
         summaryReportDto TableReport;
+
+        var sw = new Stopwatch();
+
         switch (run)
         {
             case Run.Proc:
                 {
+                    sw.Start();
                     ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(ProcReport.fullPath, ProcReport.html.Replace("{procsCount}", ProcReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{procsCount}", ProcReport.count));
-                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder,ignoredReport.path, procIndexPath: ProcReport.path);
+                    sw.Stop();
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, sw.ElapsedMilliseconds, ignoredReport.path, procIndexPath: ProcReport.path);
                 }
             case Run.View:
                 {
+                    sw.Start();
                     ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(ViewReport.fullPath, ViewReport.html.Replace("{viewsCount}", ViewReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{viewsCount}", ViewReport.count));
-                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder,ignoredReport.path, viewIndexPath: ViewReport.path);
+                    sw.Stop();
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, sw.ElapsedMilliseconds, ignoredReport.path, viewIndexPath: ViewReport.path);
                 }
             case Run.Table:
                 {
+                    sw.Start();
                     TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(TableReport.fullPath, TableReport.html.Replace("{tablesCount}", TableReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{tablesCount}", TableReport.count));
-                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder,ignoredReport.path, tableIndexPath: TableReport.path);
+                    sw.Stop();
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, sw.ElapsedMilliseconds, ignoredReport.path, tableIndexPath: TableReport.path);
                 }
             case Run.ProcView:
                 {
+                    sw.Start();
                     ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(ProcReport.fullPath, ProcReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count));
                     File.WriteAllText(ViewReport.fullPath, ViewReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count));
-                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, ignoredReport.path, procIndexPath: ProcReport.path, viewIndexPath: ViewReport.path);
+                    sw.Stop();
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, sw.ElapsedMilliseconds, ignoredReport.path, procIndexPath: ProcReport.path, viewIndexPath: ViewReport.path);
                 }
             case Run.ProcTable:
                 {
+                    sw.Start();
                     ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(ProcReport.fullPath, ProcReport.html.Replace("{procsCount}", ProcReport.count).Replace("{tablesCount}", TableReport.count));
                     File.WriteAllText(TableReport.fullPath, TableReport.html.Replace("{procsCount}", ProcReport.count).Replace("{tablesCount}", TableReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{procsCount}", ProcReport.count).Replace("{tablesCount}", TableReport.count));
-                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, ignoredReport.path, procIndexPath: ProcReport.path, tableIndexPath: TableReport.path);
+                    sw.Stop();
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, sw.ElapsedMilliseconds, ignoredReport.path, procIndexPath: ProcReport.path, tableIndexPath: TableReport.path);
                 }
             case Run.ViewTable:
                 {
+                    sw.Start();
                     ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     File.WriteAllText(ViewReport.fullPath, ViewReport.html.Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
                     File.WriteAllText(TableReport.fullPath, TableReport.html.Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
-                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, ignoredReport.path, viewIndexPath: ViewReport.path, tableIndexPath: TableReport.path);
+                    sw.Stop();
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, sw.ElapsedMilliseconds, ignoredReport.path, viewIndexPath: ViewReport.path, tableIndexPath: TableReport.path);
                 }
             case Run.All:
                 {
+                    sw.Start();
                     ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
@@ -114,7 +131,8 @@ public class DbComparer : DbObjectHandler
                     File.WriteAllText(ViewReport.fullPath, ViewReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
                     File.WriteAllText(TableReport.fullPath, TableReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
-                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder,ignoredReport.path, procIndexPath: ProcReport.path, viewIndexPath: ViewReport.path, tableIndexPath: TableReport.path);
+                    sw.Stop();
+                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, sw.ElapsedMilliseconds, ignoredReport.path, procIndexPath: ProcReport.path, viewIndexPath: ViewReport.path, tableIndexPath: TableReport.path);
                 }
             default:
                 throw new ArgumentOutOfRangeException(nameof(run), run, "Invalid Run option");
@@ -139,31 +157,33 @@ public class DbComparer : DbObjectHandler
         string ignoredCount = ignoredObjects.Count.ToString();
 
         // Step 3 - Retrieve procedure names from the source server
-        List<string> procedures = ProcedureFetcher.GetProcedureNames(sourceServer.connectionString).ToList();
+        List<(string schema, string name)> procedures = ProcedureFetcher.GetProcedureNames(sourceServer.connectionString);
 
         List<dbObjectResult> results = new();
 
         Serilog.Log.Information("Procs:");
 
         // Step 4 - Loop over each procedure and compare
-        Parallel.ForEach(procedures, parallelOptions, proc =>
+        Parallel.ForEach(procedures, parallelOptions, procTuple =>
         {
+            string schema = procTuple.schema;
+            string proc = procTuple.name;
+
             if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? proc.StartsWith(ignore[..^2] + ".") : proc == ignore))
             {
-                Log.Information($"{proc}: Ignored");
+                Log.Information($"{schema}.{proc}: Ignored");
                 return;
             }
-            string[] parts = proc.Split('.');
-            string schema = parts.Length > 1 ? parts[0] : "dbo";
+
             string safeSchema = MakeSafe(schema);
             string safeName = MakeSafe(proc);
             string schemaFolder = Path.Combine(proceduresFolderPath, safeSchema);
 
             // Step 5 - Fetch definitions from both servers
-            (string sourceBody, string destinationBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString, destinationServer.connectionString, proc);
+            (string sourceBody, string destinationBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString, destinationServer.connectionString, schema, proc);
             bool areEqual = AreBodiesEqual(sourceBody, destinationBody);
             string change = areEqual ? "No changes" : "Changes detected";
-            Serilog.Log.Information($"{proc}: {change}");
+            Serilog.Log.Information($"{schema}.{proc}: {change}");
 
             // Step 6 - Setup filenames and paths
             string sourceFile = $"{safeName}_{sourceServer.name}.html";
@@ -201,7 +221,7 @@ public class DbComparer : DbObjectHandler
             if (!areEqual && makeChange == ComparerAction.ApplyChanges)
             {
                 AlterDbObject(destinationServer.connectionString, sourceBody, destinationBody);
-                (_, destinationNewBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString, destinationServer.connectionString, proc);
+                (_, destinationNewBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString, destinationServer.connectionString, schema, proc);
                 string newPath = Path.Combine(schemaFolder, newFile);
                 HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name}", destinationNewBody, returnPage);
                 wasAltered = true;
@@ -212,6 +232,7 @@ public class DbComparer : DbObjectHandler
             {
                 Type = "Proc",
                 Name = proc,
+                schema = schema,
                 IsDestinationEmpty = isDestinationEmpty,
                 IsEqual = areEqual,
                 SourceBody = isDestinationEmpty? sourceBody : null,
@@ -251,31 +272,32 @@ public class DbComparer : DbObjectHandler
         string ignoredCount = ignoredObjects.Count.ToString();
 
         // Step 3 - Retrieve view names from the source server
-        List<string> views = ViewFetcher.GetViewsNames(sourceServer.connectionString).ToList();
+        List<(string schema, string name)> views = ViewFetcher.GetViewsNames(sourceServer.connectionString).ToList();
 
         List<dbObjectResult> results = new();
 
         Serilog.Log.Information("Views:");
 
         // Step 4 - Loop over each view and compare
-        Parallel.ForEach(views, parallelOptions, view =>
+        Parallel.ForEach(views, parallelOptions, viewTuple =>
         {
+            string schema = viewTuple.schema;
+            string view = viewTuple.name;
             if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? view.StartsWith(ignore[..^2] + ".") : view == ignore))
             {
-                Log.Information($"{view}: Ignored");
+                Log.Information($"{schema}.{view}: Ignored");
                 return;
             }
-            string[] parts = view.Split('.');
-            string schema = parts.Length > 1 ? parts[0] : "dbo";
+
             string safeSchema = MakeSafe(schema);
             string safeName = MakeSafe(view);
             string schemaFolder = Path.Combine(viewsFolderPath, safeSchema);
 
             // Step 5 - Fetch definitions from both servers
-            (string sourceBody, string destinationBody) = ViewFetcher.GetViewBody(sourceServer.connectionString, destinationServer.connectionString, view);
+            (string sourceBody, string destinationBody) = ViewFetcher.GetViewBody(sourceServer.connectionString, destinationServer.connectionString, schema, view);
             bool areEqual = AreBodiesEqual(sourceBody, destinationBody);
             string change = areEqual ? "No changes" : "Changes detected";
-            Serilog.Log.Information($"{view}: {change}");
+            Serilog.Log.Information($"{schema}.{view}: {change}");
 
             // Step 6 - Setup filenames and paths
             string sourceFile = $"{safeName}_{sourceServer.name}.html";
@@ -312,7 +334,7 @@ public class DbComparer : DbObjectHandler
             if (!areEqual && makeChange == ComparerAction.ApplyChanges)
             {
                 AlterDbObject(destinationServer.connectionString, sourceBody, destinationBody);
-                (_, destinationNewBody) = ViewFetcher.GetViewBody(sourceServer.connectionString, destinationServer.connectionString, view);
+                (_, destinationNewBody) = ViewFetcher.GetViewBody(sourceServer.connectionString, destinationServer.connectionString, schema, view);
                 string newPath = Path.Combine(schemaFolder, newFile);
                 HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name}", destinationNewBody, returnPage);
                 wasAltered = true;
@@ -323,6 +345,7 @@ public class DbComparer : DbObjectHandler
             {
                 Type = "View",
                 Name = view,
+                schema = schema,
                 IsDestinationEmpty = isDestinationEmpty,
                 IsEqual = areEqual,
                 SourceBody = isDestinationEmpty? sourceBody : null,
@@ -361,7 +384,7 @@ public class DbComparer : DbObjectHandler
         string ignoredCount = ignoredObjects.Count().ToString();
 
         // Step 3 - Retrieve table names from the source server
-        List<string> tables = TableFetcher.GetTablesNames(sourceServer.connectionString).ToList();
+        List<(string schema, string name)> tables = TableFetcher.GetTablesNames(sourceServer.connectionString).ToList();
 
         List<dbObjectResult> results = new();
         bool areEqual = false;
@@ -369,22 +392,23 @@ public class DbComparer : DbObjectHandler
         Serilog.Log.Information("Tables:");
 
         // Step 4 - Loop over each table and compare
-        Parallel.ForEach(tables, parallelOptions, table =>
+        Parallel.ForEach(tables, parallelOptions, tableTuple =>
         {
+            string schema = tableTuple.schema;
+            string table = tableTuple.name;
+
             if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? table.StartsWith(ignore[..^2] + ".") : table == ignore))
             {
                 Log.Information($"{table}: Ignored");
                 return;
             }
-            string[] parts = table.Split('.');
-            string schema = parts.Length > 1 ? parts[0] : "dbo";
             string safeSchema = MakeSafe(schema);
             string safeName = MakeSafe(table);
             string schemaFolder = Path.Combine(tablesFolderPath, safeSchema);
 
             // Step 5 - Fetch table column info
             List<string> allDifferences = new List<string>();
-            (List<tableDto> sourceInfo, List<tableDto> destinationInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, table);
+            (List<tableDto> sourceInfo, List<tableDto> destinationInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, schema, table);
             bool isDestinationEmpty = destinationInfo.IsNullOrEmpty();
 
             int sourceColumnCount = sourceInfo.Count;
@@ -405,7 +429,7 @@ public class DbComparer : DbObjectHandler
                 if (!areEqual)
                 {
                     allDifferences.AddRange(differences);
-                    Serilog.Log.Information($"{table}: Changes detected");
+                    Serilog.Log.Information($"{schema}.{table}: Changes detected");
                 }
             }
             // Handle extra columns in source
@@ -428,10 +452,13 @@ public class DbComparer : DbObjectHandler
             }
             if (areEqual)
             {
-                Serilog.Log.Information($"{table}: No Changes");
+                Serilog.Log.Information($"{schema}.{table}: No Changes");
             }
 
             // Step 7 - Setup filenames and paths
+            string differencesFile = $"{safeName}_differences.html";
+            bool isDifferencesVisible = false;
+
             string sourceFile = $"{safeName}_{sourceServer.name}.html";
             string destinationFile = $"{safeName}_{destinationServer.name}.html";
             string newFile = $"{safeName}_New.html";
@@ -447,6 +474,24 @@ public class DbComparer : DbObjectHandler
                 string destinationPath = Path.Combine(schemaFolder, destinationFile);
                 HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name} Table", HtmlReportWriter.PrintTableInfo(sourceInfo, allDifferences), returnPage);
                 HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationInfo, allDifferences), returnPage);
+
+                if (!isDestinationEmpty && !areEqual)
+                {
+                    string differencesPath = Path.Combine(schemaFolder, differencesFile);
+                    HtmlReportWriter.TableDifferencesWriter(
+                        differencesPath,
+                        sourceServer.name,
+                        destinationServer.name,
+                        sourceInfo,
+                        destinationInfo,
+                        allDifferences,
+                        "Differences",
+                        $"{schema}.{table}",
+                        returnPage
+                    );
+                    isDifferencesVisible = true;
+                }
+
                 isVisible = true;
             }
 
@@ -456,7 +501,7 @@ public class DbComparer : DbObjectHandler
 
             if (makeChange == ComparerAction.ApplyChanges)
             {
-                (_, destinationNewInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, table);
+                (_, destinationNewInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, schema, table);
                 string newPath = Path.Combine(schemaFolder, newFile);
                 HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationNewInfo, null), returnPage);
                 wasAltered = true;
@@ -467,11 +512,14 @@ public class DbComparer : DbObjectHandler
             {
                 Type = "Table",
                 Name = table,
+                schema = schema,
                 IsDestinationEmpty = isDestinationEmpty,
                 IsEqual = areEqual,
                 SourceTableInfo = sourceInfo,
+                DestinationTableInfo = destinationInfo,
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
+                DifferencesFile = isDifferencesVisible ? Path.Combine(safeSchema, differencesFile) : null,
                 NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
             });
         });

@@ -103,6 +103,7 @@ public class DbObjectHandler
     {
         public string Type { get; set; }
         public string Name { get; set; }
+        public string schema {  get; set; }
         public bool IsDestinationEmpty { get; set; }
         public bool IsEqual { get; set; }
         public string SourceFile { get; set; }
@@ -110,6 +111,7 @@ public class DbObjectHandler
         public string? DifferencesFile { get; set; }
         public string? SourceBody { get; set; }
         public List<tableDto> SourceTableInfo { get; set; }
+        public List<tableDto> DestinationTableInfo { get; set; }
         public string? NewFile { get; set; } // null if not altered
     }
  

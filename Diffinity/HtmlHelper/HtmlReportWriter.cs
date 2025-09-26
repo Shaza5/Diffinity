@@ -83,6 +83,7 @@ public static class HtmlReportWriter
     <h2>{sourceServer} : {sourceDatabase}</h2>
     <h2>{destinationServer} : {destinationDatabase}</h2>
     <h3>{Date}</h3>
+    <h3>{Duration}</h3>
     <ul>
         <li>{procsIndex}</li>
         <li>{viewsIndex}</li>
@@ -437,8 +438,43 @@ public static class HtmlReportWriter
         .return-btn:hover {
             background-color: #b42a68;
         }
-    .source { color: green; } 
-    .destination { color: red; }
+        .difference {
+            background-color: #fff3b0;  
+            color: #000;              
+        }
+        .source {
+            background-color: #d4edda; 
+            color: #000;
+        }
+        .destination {
+            background-color: #f8d7da;  
+            color: #000;
+        }
+        .side-by-side {
+            width: 100%;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .side-by-side > div {
+            flex: 1;
+            min-width: 300px;
+            margin-bottom: 0;  
+        }
+        .db-block {
+            flex: 1;
+            min-width: 300px;
+            background: none;
+            border: none;
+            padding: 0;
+            margin-bottom: 40px; 
+        }
+        .code-scroll {
+            height: 400px;      
+            overflow-y: auto;   
+            overflow-x: auto;    
+            margin-top: 10px;
+        }
     </style>
   </head>";
     private const string DifferencesTemplate = @"<!DOCTYPE html>
@@ -556,7 +592,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
     /// </summary>
-    public static string WriteIndexSummary(string sourceConnectionString, string destinationConnectionString, string outputPath, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null)
+    public static string WriteIndexSummary(string sourceConnectionString, string destinationConnectionString, string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null)
     {
         // Extract server and database names from connection strings
         var sourceBuilder = new SqlConnectionStringBuilder(sourceConnectionString);
@@ -569,6 +605,9 @@ public static class HtmlReportWriter
         StringBuilder html = new StringBuilder();
         DateTime date = DateTime.UtcNow; ;
         string Date = date.ToString("MM/dd/yyyy hh:mm tt ") + "UTC";
+        TimeSpan ts = TimeSpan.FromMilliseconds(Duration);
+        double minutes = Duration / 60000.0;
+        string formattedDuration = $"{minutes:F1} minutes";
 
         // Create links to individual index pages
         string procsIndex = procIndexPath == null ? "" : $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
@@ -577,7 +616,7 @@ public static class HtmlReportWriter
         string ignoredIndex = ignoredIndexPath == null ? "" : $@"<a href=""{ignoredIndexPath}"" class=""btn"">Ignored</a>";
 
         // Replace placeholders in the index template
-        html.Append(IndexTemplate.Replace("{sourceServer}", sourceServer).Replace("{sourceDatabase}", sourceDatabase).Replace("{destinationServer}", destinationServer).Replace("{destinationDatabase}", destinationDatabase).Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex).Replace("{ignoredIndex}", ignoredIndex).Replace("{Date}", Date));
+        html.Append(IndexTemplate.Replace("{sourceServer}", sourceServer).Replace("{sourceDatabase}", sourceDatabase).Replace("{destinationServer}", destinationServer).Replace("{destinationDatabase}", destinationDatabase).Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex).Replace("{ignoredIndex}", ignoredIndex).Replace("{Date}", Date).Replace("{Duration}", formattedDuration));
         string indexPath = Path.Combine(outputPath, "index.html");
 
         // Write to index.html
@@ -614,18 +653,17 @@ public static class HtmlReportWriter
             int newCount = 1;
             foreach (var item in newObjects)
             {
-               if (item.SourceFile == null) continue;
 
                 string sourceBody = item.Type == "Table" ? PrintTableInfo(item.SourceTableInfo, new List<string>()) : item.SourceBody;
-     
+
 
                 string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
                 string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">Copy</button><br>
                        <span class=""copy-target"" style=""display:none;"">{sourceBody}</span>";
-                
+
                 newTable.Append($@"<tr>
                                 <td>{newCount}</td>
-                                <td>{item.Name}</td>
+                                <td>{item.schema}.{item.Name}</td>
                                 <td>{sourceLink}</td>
                                 <td>{copyButton}</td>
                                 </tr>");
@@ -665,27 +703,6 @@ public static class HtmlReportWriter
         html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s :</h2>");
         foreach (var item in existingObjects)
         {
-            if (result.Type == "Table")
-            {
-                html.Replace("{differences}", "");
-                // Prepare file links
-                string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
-                string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>" : "—";
-                string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
-
-                if ((item.IsEqual && filter == DbObjectFilter.ShowUnchanged) || !item.IsEqual)
-                {
-                    html.Append($@"<tr>
-                    <td>{Number}</td>
-                    <td>{item.Name}</td>
-                    <td>{sourceColumn}</td>
-                    <td>{destinationColumn}</td>
-                     </tr>");
-                    Number++;
-                }
-            }
-            else
-            {
                 html.Replace("{differences}", "<th>Changes</th>");
                 // Prepare file links
                 string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
@@ -697,14 +714,13 @@ public static class HtmlReportWriter
                 {
                     html.Append($@"<tr>
                     <td>{Number}</td>
-                    <td>{item.Name}</td>
+                    <td>{item.schema}.{item.Name}</td>
                     <td>{sourceColumn}</td>
                     <td>{destinationColumn}</td>
                     <td>{differencesColumn}</td>
                      </tr>");
                     Number++;
                 }
-            }
         }
         html.Append($@"</table>
                        <br>
@@ -918,6 +934,149 @@ public static class HtmlReportWriter
             return input.Replace("[", "").Replace("]", "");
         }
         #endregion
+    }
+
+    /// <summary>
+    /// Prints table column details with to show the differences 
+    /// </summary>
+    public static void TableDifferencesWriter(string filePath, string sourceName, string destinationName, List<tableDto> sourceTable, List<tableDto> destinationTable, List<string> differences, string title, string objectName, string returnPage)
+    {
+        var html = new StringBuilder();
+        html.AppendLine(BodyTemplate.Replace("{title}", title));
+
+        html.AppendLine($@"
+            <body>
+            <h1>{title} for {objectName}</h1>
+            <div class='side-by-side'>
+                <div class='db-block'>
+                    <span class='use'>{sourceName}</span>
+                    <div class='code-scroll' id='left'>
+                        <table>
+                            <tr><th>Column Name</th><th>Column Type</th><th>Is Nullable</th><th>Max Length</th><th>Is Primary Key</th><th>Is Foreign Key</th></tr>");
+
+        var destTableHtml = new StringBuilder();
+        destTableHtml.AppendLine($@"
+            <div class='db-block'>
+                <span class='use'>{destinationName}</span>
+                <div class='code-scroll' id='right'>
+                    <table>
+                        <tr><th>Column Name</th><th>Column Type</th><th>Is Nullable</th><th>Max Length</th><th>Is Primary Key</th><th>Is Foreign Key</th></tr>");
+
+        // Track remaining columns that are not yet output
+        var sourceRemaining = new Queue<tableDto>(sourceTable);
+        var destRemaining = new Queue<tableDto>(destinationTable);
+
+        // Output rows until both queues are empty
+        while (sourceRemaining.Any() || destRemaining.Any())
+        {
+            tableDto srcCol = sourceRemaining.Any() ? sourceRemaining.Peek() : null;
+            tableDto destCol = destRemaining.Any() ? destRemaining.Peek() : null;
+
+            bool srcHas = srcCol != null;
+            bool destHas = destCol != null;
+
+            // If names match, we pop both; otherwise, pop whichever comes first in each table
+            if (srcHas && destHas && srcCol.columnName.Equals(destCol.columnName, StringComparison.OrdinalIgnoreCase))
+            {
+                sourceRemaining.Dequeue();
+                destRemaining.Dequeue();
+            }
+            else if (srcHas && (!destHas || !destinationTable.Select(c => c.columnName).Contains(srcCol.columnName, StringComparer.OrdinalIgnoreCase)))
+            {
+                srcCol = sourceRemaining.Dequeue();
+                destCol = null;
+            }
+            else if (destHas && (!srcHas || !sourceTable.Select(c => c.columnName).Contains(destCol.columnName, StringComparer.OrdinalIgnoreCase)))
+            {
+                destCol = destRemaining.Dequeue();
+                srcCol = null;
+            }
+            else
+            {
+                // Names do not match; align by order
+                srcCol = sourceRemaining.Any() ? sourceRemaining.Dequeue() : null;
+                destCol = destRemaining.Any() ? destRemaining.Dequeue() : null;
+            }
+
+            // Build source row
+            if (srcCol != null)
+            {
+                string nameCss = destCol == null ? "source" :
+                    (destCol.columnType != srcCol.columnType || destCol.isNullable != srcCol.isNullable ||
+                     destCol.maxLength != srcCol.maxLength || destCol.isPrimaryKey != srcCol.isPrimaryKey ||
+                     destCol.isForeignKey != srcCol.isForeignKey) ? "difference" : "";
+
+                string typeCss = destCol != null && srcCol.columnType != destCol.columnType ? "difference" : "";
+                string nullCss = destCol != null && srcCol.isNullable != destCol.isNullable ? "difference" : "";
+                string lenCss = destCol != null && srcCol.maxLength != destCol.maxLength ? "difference" : "";
+                string pkCss = destCol != null && srcCol.isPrimaryKey != destCol.isPrimaryKey ? "difference" : "";
+                string fkCss = destCol != null && srcCol.isForeignKey != destCol.isForeignKey ? "difference" : "";
+
+                html.AppendLine($@"
+                <tr>
+                    <td class='{nameCss}'>{srcCol.columnName}</td>
+                    <td class='{typeCss}'>{srcCol.columnType}</td>
+                    <td class='{nullCss}'>{srcCol.isNullable}</td>
+                    <td class='{lenCss}'>{srcCol.maxLength}</td>
+                    <td class='{pkCss}'>{srcCol.isPrimaryKey}</td>
+                    <td class='{fkCss}'>{srcCol.isForeignKey}</td>
+                </tr>");
+            }
+            else
+            {
+                html.AppendLine("<tr><td colspan='6' class='missing'>&nbsp;</td></tr>");
+            }
+
+            // Build destination row
+            if (destCol != null)
+            {
+                string nameCss = srcCol == null ? "destination" :
+                    (srcCol.columnType != destCol.columnType || srcCol.isNullable != destCol.isNullable ||
+                     srcCol.maxLength != destCol.maxLength || srcCol.isPrimaryKey != destCol.isPrimaryKey ||
+                     srcCol.isForeignKey != destCol.isForeignKey) ? "difference" : "";
+
+                string typeCss = srcCol != null && destCol.columnType != srcCol.columnType ? "difference" : "";
+                string nullCss = srcCol != null && destCol.isNullable != srcCol.isNullable ? "difference" : "";
+                string lenCss = srcCol != null && destCol.maxLength != srcCol.maxLength ? "difference" : "";
+                string pkCss = srcCol != null && destCol.isPrimaryKey != srcCol.isPrimaryKey ? "difference" : "";
+                string fkCss = srcCol != null && destCol.isForeignKey != srcCol.isForeignKey ? "difference" : "";
+
+                destTableHtml.AppendLine($@"
+                <tr>
+                    <td class='{nameCss}'>{destCol.columnName}</td>
+                    <td class='{typeCss}'>{destCol.columnType}</td>
+                    <td class='{nullCss}'>{destCol.isNullable}</td>
+                    <td class='{lenCss}'>{destCol.maxLength}</td>
+                    <td class='{pkCss}'>{destCol.isPrimaryKey}</td>
+                    <td class='{fkCss}'>{destCol.isForeignKey}</td>
+                </tr>");
+            }
+            else
+            {
+                destTableHtml.AppendLine("<tr><td colspan='6' class='missing'>&nbsp;</td></tr>");
+            }
+        }
+
+        html.AppendLine("</table></div></div>");
+        destTableHtml.AppendLine("</table></div></div>");
+        html.AppendLine(destTableHtml.ToString());
+
+        html.AppendLine($@"
+            </div>
+            <a href='{returnPage}' class='return-btn'>Return to Summary</a>
+            <script>
+            const blocks = document.querySelectorAll('.code-scroll');
+            function syncScrollY(src, tgt) {{ tgt.scrollTop = src.scrollTop; }}
+            if (blocks.length === 2) {{
+              let isSyncing = false;
+              blocks[0].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScrollY(blocks[0], blocks[1]); isSyncing = false; }});
+              blocks[1].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScrollY(blocks[1], blocks[0]); isSyncing = false; }});
+            }}
+            </script>
+            </body>
+            </html>");
+
+        File.WriteAllText(filePath, html.ToString());
     }
     #endregion
 
