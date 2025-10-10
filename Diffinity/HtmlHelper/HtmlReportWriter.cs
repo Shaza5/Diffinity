@@ -633,6 +633,13 @@ public static class HtmlReportWriter
     {
         StringBuilder html = new();
         var result = results[0];
+
+        bool isProcedureReport = result.Type != null
+        && (result.Type.Equals("Procedure", StringComparison.OrdinalIgnoreCase)
+        || result.Type.Equals("Proc", StringComparison.OrdinalIgnoreCase)
+        || result.Type.IndexOf("proc", StringComparison.OrdinalIgnoreCase) >= 0);
+
+
         string returnPage = Path.Combine("..", "index.html");
         html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}", BuildNav(run, isIgnoredEmpty,ignoredCount)));
 
@@ -654,19 +661,27 @@ public static class HtmlReportWriter
             foreach (var item in newObjects)
             {
 
-                string sourceBody = item.Type == "Table" ? PrintTableInfo(item.SourceTableInfo, new List<string>()) : item.SourceBody;
+                //string sourceBody = item.Type == "Table" ? PrintTableInfo(item.SourceTableInfo, new List<string>()) : item.SourceBody;
+                string sourceBody = item.Type == "Table"
+                    ? PrintTableInfo(item.SourceTableInfo, new List<string>())
+                    : item.SourceBody;
 
 
-                string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
+                string sourceLink = $@"<a href=""{item.SourceFile}"">View</a>";
                 string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">Copy</button><br>
                        <span class=""copy-target"" style=""display:none;"">{sourceBody}</span>";
 
+                string nameCell = isProcedureReport
+                    ? $"{BracketName(item.schema)}.{BracketName(item.Name)}"
+                    : $"{item.schema}.{item.Name}";
+
                 newTable.Append($@"<tr>
-                                <td>{newCount}</td>
-                                <td>{item.schema}.{item.Name}</td>
-                                <td>{sourceLink}</td>
-                                <td>{copyButton}</td>
-                                </tr>");
+                <td>{newCount}</td>
+                <td>{nameCell}</td>
+                <td>{sourceLink}</td>
+                <td>{copyButton}</td>
+                </tr>");
+
                 newCount++;
             }
 
@@ -689,7 +704,7 @@ public static class HtmlReportWriter
                 </script>"
             );
             html.Replace("{NewTable}", newTable.ToString());
-     
+
         }
         else
         {
@@ -703,24 +718,29 @@ public static class HtmlReportWriter
         html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s :</h2>");
         foreach (var item in existingObjects)
         {
-                html.Replace("{differences}", "<th>Changes</th>");
-                // Prepare file links
-                string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
-                string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>" : "—";
-                string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
-                string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
+            html.Replace("{differences}", "<th>Changes</th>");
+            // Prepare file links
+            string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
+            string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>" : "—";
+            string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
+            string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
-                if ((item.IsEqual && filter == DbObjectFilter.ShowUnchanged) || !item.IsEqual)
-                {
-                    html.Append($@"<tr>
+            if ((item.IsEqual && filter == DbObjectFilter.ShowUnchanged) || !item.IsEqual)
+            {
+
+                string nameCell = isProcedureReport
+                    ? $"{BracketName(item.schema)}.{BracketName(item.Name)}"
+                    : $"{item.schema}.{item.Name}";
+
+                html.Append($@"<tr>
                     <td>{Number}</td>
-                    <td>{item.schema}.{item.Name}</td>
+                    <td>{nameCell}</td>
                     <td>{sourceColumn}</td>
                     <td>{destinationColumn}</td>
                     <td>{differencesColumn}</td>
                      </tr>");
-                    Number++;
-                }
+                Number++;
+            }
         }
         html.Append($@"</table>
                        <br>
@@ -833,11 +853,21 @@ public static class HtmlReportWriter
     /// </summary>
     public static void DifferencesWriter(string differencesPath, string sourceName, string destinationName, string sourceBody, string destinationBody, string title, string Name, string returnPage)
     {
+
+
         var differ = new Differ();
-        string normalizedSourceBody = Normalize(sourceBody);
-        string normalizedDestinationBody = Normalize(destinationBody);
-        string[] sourceBodyColored = HighlightSql(normalizedSourceBody).Split("\n");
-        string[] destinationBodyColored = HighlightSql(normalizedDestinationBody).Split("\n");
+
+        // Keep the original bodies for display (do not remove brackets from these)
+        string displaySourceBody = sourceBody ?? string.Empty;
+        string displayDestinationBody = destinationBody ?? string.Empty;
+
+
+
+        // Highlight the original display bodies (so displayed panes keep brackets)
+        string[] sourceBodyColored = HighlightSql(displaySourceBody).Split("\n");
+        string[] destinationBodyColored = HighlightSql(displayDestinationBody).Split("\n");
+
+        // Build the side-by-side diff model using the highlighted lines (order: old/destination first, new/source second)
         var sideBySideBuilder = new SideBySideDiffBuilder(differ);
         var model = sideBySideBuilder.BuildDiffModel(string.Join("\n", destinationBodyColored), string.Join("\n", sourceBodyColored));
 
@@ -1096,6 +1126,22 @@ public static class HtmlReportWriter
         };
     }
 
+
+    /// <summary>
+    /// Wraps name in SQL brackets if it's not null or empty
+    /// and ensures it's not double-bracketed.
+    /// </summary>
+    public static string BracketName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+
+        // Strip any existing brackets
+        string cleanName = name.Trim().TrimStart('[').TrimEnd(']');
+
+        // Re-wrap with new brackets
+        return $"[{cleanName}]";
+    }
+
     /// <summary>
     /// Highlights SQL source code by applying syntax coloring for display purposes.
     /// </summary>
@@ -1109,7 +1155,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Write the nav section in the comparison summary pages
     /// </summary>
-    static string BuildNav(Run run, bool isIgnoredEmpty,string count)
+    static string BuildNav(Run run, bool isIgnoredEmpty, string count)
     {
         string proceduresPath = "../Procedures/index.html";
         string viewsPath = "../Views/index.html";

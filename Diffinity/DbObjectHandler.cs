@@ -3,11 +3,49 @@ using Diffinity.TableHelper;
 using Microsoft.Data.SqlClient;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Diffinity;
 
 public class DbObjectHandler
 {
+
+
+
+
+    /// <summary>
+    /// DISPLAY-ONLY: Ensures the procedure name (and optional schema) are bracketed:
+    /// CREATE [schema].[proc] or CREATE [proc]
+    /// Works with CREATE or CREATE OR ALTER, PROC or PROCEDURE.
+    /// Touches only the first declaration line.
+    /// </summary>
+    public static string BracketProcNameOnly(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql)) return sql;
+
+        // Find:  (CREATE [OR ALTER] PROC|PROCEDURE)  <name>   (name stops before space or '(')
+        var re = new Regex(@"(?is)\b(CREATE\s+(?:OR\s+ALTER\s+)?PROC(?:EDURE)?)\s+([^\s(]+)");
+        return re.Replace(sql, m =>
+        {
+            var head = m.Groups[1].Value;   // e.g., "CREATE OR ALTER PROC"
+            var name = m.Groups[2].Value;   // e.g., "dbo.procName" or "procName" or "[dbo].[procName]"
+
+            string Bracket(string p)
+            {
+                p = p.Trim();
+                if (p.StartsWith("[") && p.EndsWith("]")) return p;
+                return $"[{p.Trim('[', ']')}]";
+            }
+
+            var parts = name.Split('.');
+            for (int i = 0; i < parts.Length; i++)
+                parts[i] = Bracket(parts[i]);
+
+            return $"{head} {string.Join(".", parts)}";
+        }, 1);
+    }
+
+
     public static bool AreBodiesEqual(string body1, string body2)
     {
         /// <summary>
@@ -43,7 +81,7 @@ public class DbObjectHandler
                                    .Replace("\t", "")
                                    .Replace("\n", "")
                                    .Replace("[", "")
-                                   .Replace("]","")
+                                   .Replace("]", "")
                                    .Trim();
 
             // Convert normalized string to bytes
@@ -63,7 +101,7 @@ public class DbObjectHandler
         #endregion
     }
 
-    public static void AlterDbObject(string destinationConnectionString, string sourceBody,string destinationBody)
+    public static void AlterDbObject(string destinationConnectionString, string sourceBody, string destinationBody)
     {
         /// <summary>
         /// Alters a database object on the destination server based on the source object body.
@@ -73,7 +111,7 @@ public class DbObjectHandler
         /// <param name="destinationConnectionString">Connection string for the destination database.</param>
         /// <param name="sourceBody">The source database object definition (CREATE statement).</param>
         /// <param name="destinationBody">The existing destination object definition (may be empty).</param>
-        
+
         if (string.IsNullOrWhiteSpace(sourceBody)) throw new ArgumentException("Source body cannot be null or empty.");
         using var sourceConnection = new SqlConnection(destinationConnectionString);
 
@@ -98,12 +136,12 @@ public class DbObjectHandler
         string ReplaceCreateWithAlter(string body) => body.Replace("CREATE", "ALTER").Replace("Create", "ALTER").Replace("create", "ALTER");
         #endregion
     }
-    
+
     public class dbObjectResult
     {
         public string Type { get; set; }
         public string Name { get; set; }
-        public string schema {  get; set; }
+        public string schema { get; set; }
         public bool IsDestinationEmpty { get; set; }
         public bool IsEqual { get; set; }
         public string SourceFile { get; set; }
@@ -114,5 +152,5 @@ public class DbObjectHandler
         public List<tableDto> DestinationTableInfo { get; set; }
         public string? NewFile { get; set; } // null if not altered
     }
- 
+
 }
