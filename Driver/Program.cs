@@ -8,7 +8,7 @@ internal class Program
         var DEV002   = new DbServer("DEV002", Environment.GetEnvironmentVariable("dev2cs"));
         var Corewell = new DbServer("Corewell", Environment.GetEnvironmentVariable("connectionString"));
         var CMH      = new DbServer("CMH", Environment.GetEnvironmentVariable("cmhCs"));
-        
+
         string IndexPage = DbComparer.Compare(DEV002,CMH);
         #region Optional
         // You can optionally pass any of the following parameters:

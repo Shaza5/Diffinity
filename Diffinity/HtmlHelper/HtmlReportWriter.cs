@@ -658,7 +658,7 @@ public static class HtmlReportWriter
 
 
                 string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
-                string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">Copy</button><br>
+                string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">❐</button><br>
                        <span class=""copy-target"" style=""display:none;"">{sourceBody}</span>";
 
                 newTable.Append($@"<tr>
@@ -679,8 +679,8 @@ public static class HtmlReportWriter
                         const text = codeBlock?.innerText.trim();
 
                         navigator.clipboard.writeText(text).then(() => {
-                            button.textContent = 'Copied!';
-                            setTimeout(() => button.textContent = 'Copy', 2000);
+                            button.textContent = '✔';
+                            setTimeout(() => button.textContent = '❐', 2000);
                         }).catch(err => {
                             console.error('Copy failed:', err);
                             alert('Failed to copy!');
@@ -801,7 +801,7 @@ public static class HtmlReportWriter
         html.AppendLine($@"<body>
         <h1>{title}</h1>
             <div>
-            <span class=""use"">Use {title}</span> <button class='copy-btn' onclick='copyPane(this)'>Copy</button><br>
+            <span class=""use"">Use {title}</span> <button class='copy-btn' onclick='copyPane(this)'>❐</button><br>
             <span class=""copy-target"">{coloredCode}</span>
             </div>
             
@@ -812,8 +812,8 @@ public static class HtmlReportWriter
                     const text = codeBlock?.innerText.trim();
             
                     navigator.clipboard.writeText(text).then(() => {{
-                        button.textContent = 'Copied!';
-                        setTimeout(() => button.textContent = 'Copy', 2000);
+                        button.textContent = '✔';
+                        setTimeout(() => button.textContent = '❐', 2000);
                     }}).catch(err => {{
                         console.error('Copy failed:', err);
                         alert('Failed to copy!');
@@ -848,7 +848,7 @@ public static class HtmlReportWriter
         html.AppendLine(@$"<h1>{Name}</h1>
                         <div class='diff-wrapper'>
                         <div class='pane'>
-                        <button class='copy-btn' data-target='left'>Copy</button>
+                        <button class='copy-btn' data-target='left'>❐</button>
                         <h2>{sourceName}</h2>
                         <div class='code-scroll' id='left'><div class='code-block'>
 
@@ -863,7 +863,7 @@ public static class HtmlReportWriter
         // Destination block
         html.Append($@"</div></div></div>
                         <div class='pane'>
-                        <button class='copy-btn' data-target='right'>Copy</button>
+                        <button class='copy-btn' data-target='right'>❐</button>
                         <h2>{destinationName}</h2>
                         <div class='code-scroll' id='right'><div class='code-block'>
                         ");
@@ -888,8 +888,8 @@ public static class HtmlReportWriter
                                           .map(line => line.textContent)
                                           .join('\n');
                         navigator.clipboard.writeText(text).then(() => {{
-                            button.textContent = 'Copied!';
-                            setTimeout(() => button.textContent = 'Copy', 2000);
+                            button.textContent = '✔';
+                            setTimeout(() => button.textContent = '❐', 2000);
                         }});
                     }});
                 }});
