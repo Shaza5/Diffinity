@@ -10,6 +10,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.RegularExpressions;
 using static Diffinity.DbObjectHandler;
+using System.Net; 
 
 
 
@@ -654,12 +655,15 @@ public static class HtmlReportWriter
             foreach (var item in newObjects)
             {
 
-                string sourceBody = item.Type == "Table" ? PrintTableInfo(item.SourceTableInfo, new List<string>()) : item.SourceBody;
+                string copyPayload = item.Type == "Table"
+                    ? BuildCreateTableDDL(item.schema, item.Name, item.SourceTableInfo)
+                    : item.SourceBody;
 
 
                 string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
                 string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">Copy</button><br>
-                       <span class=""copy-target"" style=""display:none;"">{sourceBody}</span>";
+       <span class=""copy-target"" style=""display:none;"">{System.Net.WebUtility.HtmlEncode(copyPayload)}</span>";
+
 
                 newTable.Append($@"<tr>
                                 <td>{newCount}</td>
@@ -826,6 +830,46 @@ public static class HtmlReportWriter
         File.WriteAllText(filePath, html.ToString());
     }
     #endregion
+
+    public static void WriteTableHtml(string filePath, string title, string tableHtmlToDisplay, string createSqlToCopy, string returnPage)
+    {
+        var html = new StringBuilder();
+        html.AppendLine(BodyTemplate.Replace("{title}", title));
+
+        // Show the grid, but copy the CREATE TABLE (hidden).
+        html.AppendLine($@"
+<body>
+    <h1>{title}</h1>
+    <div>
+        <span class=""use"">Use {title}</span>
+        <button class='copy-btn' onclick='copyPane(this)'>Copy</button><br>
+
+        {tableHtmlToDisplay}
+
+        <span class=""copy-target"" style=""display:none;"">{WebUtility.HtmlEncode(createSqlToCopy)}</span>
+    </div>
+
+    <script>
+        function copyPane(button) {{
+            const container = button.closest('div');
+            const codeBlock = container.querySelector('.copy-target');
+            const text = codeBlock?.innerText.trim();
+
+            navigator.clipboard.writeText(text).then(() => {{
+                button.textContent = 'Copied!';
+                setTimeout(() => button.textContent = 'Copy', 2000);
+            }}).catch(err => {{
+                console.error('Copy failed:', err);
+                alert('Failed to copy!');
+            }});
+        }}
+    </script>
+    <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
+</body>
+</html>");
+        File.WriteAllText(filePath, html.ToString());
+    }
+
 
     #region Differences Writer
     /// <summary>
@@ -1081,6 +1125,63 @@ public static class HtmlReportWriter
     #endregion
 
     #region Helpers
+
+
+    public static string BuildCreateTableDDL(string schema, string table, List<tableDto> cols)
+    {
+        if (cols == null || cols.Count == 0)
+            return $"-- Table [{schema}].[{table}] has no columns?";
+
+        string NormalizeLen(string type, string lenStr)
+        {
+            if (string.IsNullOrWhiteSpace(lenStr)) return "";
+            if (!int.TryParse(lenStr, out var len)) return "";
+
+            // nvarchar/nchar length in sys.columns is bytes. Convert to characters.
+            if (type.Equals("nvarchar", StringComparison.OrdinalIgnoreCase) ||
+                type.Equals("nchar", StringComparison.OrdinalIgnoreCase))
+            {
+                if (len == -1) return "(MAX)";
+                return $"({len / 2})";
+            }
+
+            // varchar/char length is bytes already.
+            if (type.Equals("varchar", StringComparison.OrdinalIgnoreCase) ||
+                type.Equals("char", StringComparison.OrdinalIgnoreCase))
+            {
+                if (len == -1) return "(MAX)";
+                return $"({len})";
+            }
+
+            // other types: no (length) suffix
+            return "";
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"CREATE TABLE [{schema}].[{table}] (");
+
+        for (int i = 0; i < cols.Count; i++)
+        {
+            var c = cols[i];
+            var len = NormalizeLen(c.columnType, c.maxLength);
+            var nullability = (c.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
+            var comma = (i < cols.Count - 1) ? "," : "";
+            sb.AppendLine($"    [{c.columnName}] {c.columnType}{len} {nullability}{comma}");
+        }
+
+        // Add a PK constraint if we have PK columns (single or composite)
+        var pkCols = cols.Where(x => x.isPrimaryKey?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true)
+                         .Select(x => $"[{x.columnName}]")
+                         .ToList();
+        if (pkCols.Any())
+        {
+            sb.AppendLine($",   CONSTRAINT [PK_{table}] PRIMARY KEY ({string.Join(", ", pkCols)})");
+        }
+
+        sb.AppendLine(");");
+        return sb.ToString();
+    }
+
     /// <summary>
     /// Maps DiffPlex line change types to CSS class names.
     /// </summary>
