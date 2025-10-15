@@ -2,6 +2,7 @@
 using Diffinity.ProcHelper;
 using Diffinity.TableHelper;
 using Diffinity.ViewHelper;
+using Diffinity.UdtHelper;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Diagnostics;
@@ -24,6 +25,7 @@ public enum Run
     Proc,
     View,
     Table,
+    Udt,
     ProcView,
     ProcTable,
     ViewTable,
@@ -56,6 +58,7 @@ public class DbComparer : DbObjectHandler
         summaryReportDto ProcReport;
         summaryReportDto ViewReport;
         summaryReportDto TableReport;
+        summaryReportDto UdtReport;
 
         var sw = new Stopwatch();
 
@@ -87,6 +90,17 @@ public class DbComparer : DbObjectHandler
                     if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{tablesCount}", TableReport.count));
                     sw.Stop();
                     return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, sw.ElapsedMilliseconds, ignoredReport.path, tableIndexPath: TableReport.path);
+                }
+            case Run.Udt:
+                {
+                    sw.Start();
+                    UdtReport = CompareUdts(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
+                    File.WriteAllText(UdtReport.fullPath, UdtReport.html.Replace("{udtsCount}", UdtReport.count));
+                    if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{udtsCount}", UdtReport.count));
+                    sw.Stop();
+                    return HtmlReportWriter.WriteIndexSummary(
+                        sourceServer.connectionString, destinationServer.connectionString, outputFolder, sw.ElapsedMilliseconds,
+                        ignoredReport.path, udtIndexPath: UdtReport.path);
                 }
             case Run.ProcView:
                 {
@@ -127,12 +141,16 @@ public class DbComparer : DbObjectHandler
                     ProcReport = CompareProcs(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     ViewReport = CompareViews(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
                     TableReport = CompareTables(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
-                    File.WriteAllText(ProcReport.fullPath, ProcReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
-                    File.WriteAllText(ViewReport.fullPath, ViewReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
-                    File.WriteAllText(TableReport.fullPath, TableReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
-                    if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count));
+                    UdtReport = CompareUdts(sourceServer, destinationServer, outputFolder, makeChange.Value, filter.Value, run.Value, ignoredObjects, threadCount);
+                    File.WriteAllText(ProcReport.fullPath, ProcReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count).Replace("{udtsCount}", UdtReport.count));
+                    File.WriteAllText(ViewReport.fullPath, ViewReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count).Replace("{udtsCount}", UdtReport.count));
+                    File.WriteAllText(TableReport.fullPath, TableReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count).Replace("{udtsCount}", UdtReport.count));
+                    File.WriteAllText(UdtReport.fullPath, UdtReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count).Replace("{udtsCount}", UdtReport.count));
+                    if (ignoredObjects.Any()) File.WriteAllText(ignoredReport.fullPath, ignoredReport.html.Replace("{procsCount}", ProcReport.count).Replace("{viewsCount}", ViewReport.count).Replace("{tablesCount}", TableReport.count).Replace("{udtsCount}", UdtReport.count));
                     sw.Stop();
-                    return HtmlReportWriter.WriteIndexSummary(sourceServer.connectionString, destinationServer.connectionString, outputFolder, sw.ElapsedMilliseconds, ignoredReport.path, procIndexPath: ProcReport.path, viewIndexPath: ViewReport.path, tableIndexPath: TableReport.path);
+                    return HtmlReportWriter.WriteIndexSummary(
+                        sourceServer.connectionString, destinationServer.connectionString, outputFolder, sw.ElapsedMilliseconds,
+                        ignoredReport.path, procIndexPath: ProcReport.path, viewIndexPath: ViewReport.path, tableIndexPath: TableReport.path, udtIndexPath: UdtReport.path);
                 }
             default:
                 throw new ArgumentOutOfRangeException(nameof(run), run, "Invalid Run option");
@@ -534,6 +552,120 @@ public class DbComparer : DbObjectHandler
             count = tablesCount
         };
     }
+
+    public static summaryReportDto CompareUdts(
+    DbServer sourceServer,
+    DbServer destinationServer,
+    string outputFolder,
+    ComparerAction makeChange,
+    DbObjectFilter filter,
+    Run run,
+    HashSet<string> ignoredObjects,
+    int threadCount)
+    {
+        ParallelOptions parallelOptions = new() { MaxDegreeOfParallelism = threadCount };
+
+        // 1) Folders
+        Directory.CreateDirectory(outputFolder);
+        string udtsFolderPath = Path.Combine(outputFolder, "UDTs");
+        Directory.CreateDirectory(udtsFolderPath);
+
+        // 2) Ignored meta
+        bool isIgnoredEmpty = !ignoredObjects.Any();
+        string ignoredCount = ignoredObjects.Count.ToString();
+
+        // 3) Pull UDT names from source
+        var udts = UdtFetcher.GetUdtNames(sourceServer.connectionString); // List<(string schema, string name)>
+        var results = new List<dbObjectResult>();
+
+        Serilog.Log.Information("UDTs:");
+
+        // 4) Compare bodies (scripted CREATE TYPE definitions)
+        Parallel.ForEach(udts, parallelOptions, udt =>
+        {
+            string schema = udt.schema;
+            string name = udt.name;
+            string full = $"{schema}.{name}";
+
+            if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? full.StartsWith(ignore[..^2] + ".") : full == ignore))
+            {
+                Log.Information($"{full}: Ignored");
+                return;
+            }
+
+            string safeSchema = MakeSafe(schema);
+            string safeName = MakeSafe(name);
+            string schemaFolder = Path.Combine(udtsFolderPath, safeSchema);
+
+            // 5) Script UDTs on both servers
+            (string sourceBody, string destBody) = UdtFetcher.GetUdtBody(sourceServer.connectionString, destinationServer.connectionString, schema, name);
+
+            bool areEqual = AreBodiesEqual(sourceBody, destBody);
+            bool isDestinationEmpty = string.IsNullOrWhiteSpace(destBody);
+            string change = areEqual ? "No changes" : "Changes detected";
+            Serilog.Log.Information($"{full}: {change}");
+
+            // 6) Files
+            string sourceFile = $"{safeName}_{sourceServer.name}.html";
+            string destinationFile = $"{safeName}_{destinationServer.name}.html";
+            string differencesFile = $"{safeName}_differences.html";
+            string returnPage = Path.Combine("..", "index.html");
+
+            bool isVisible = false, isDifferencesVisible = false;
+
+            // 7) Output HTML
+            if ((areEqual && filter == DbObjectFilter.ShowUnchanged) || !areEqual)
+            {
+                Directory.CreateDirectory(schemaFolder);
+                HtmlReportWriter.WriteBodyHtml(Path.Combine(schemaFolder, sourceFile), $"{sourceServer.name}", sourceBody, returnPage);
+                HtmlReportWriter.WriteBodyHtml(Path.Combine(schemaFolder, destinationFile), $"{destinationServer.name}", destBody, returnPage);
+
+                if (!isDestinationEmpty && !areEqual)
+                {
+                    HtmlReportWriter.DifferencesWriter(
+                        Path.Combine(schemaFolder, differencesFile),
+                        sourceServer.name, destinationServer.name,
+                        sourceBody, destBody,
+                        "Differences", name, returnPage);
+                    isDifferencesVisible = true;
+                }
+                isVisible = true;
+            }
+            // 8) Attempt apply changes if requested (DROP TYPE + CREATE TYPE guarded by dependency check)
+            // Prepare variables for potential update
+
+
+            // 9) Summary row
+            results.Add(new dbObjectResult
+            {
+                Type = "UDT",
+                Name = name,
+                schema = schema,
+                IsDestinationEmpty = isDestinationEmpty,
+                IsEqual = areEqual,
+                SourceBody = isDestinationEmpty ? sourceBody : null,
+                SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
+                DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
+                DifferencesFile = isDifferencesVisible ? Path.Combine(safeSchema, differencesFile) : null,
+                NewFile = null
+            });
+        });
+
+        // 10) Summary page
+        (string udtHtml, string udtCount) = HtmlReportWriter.WriteSummaryReport(
+            sourceServer, destinationServer, Path.Combine(udtsFolderPath, "index.html"),
+            results, filter, run, isIgnoredEmpty, ignoredCount);
+
+
+        return new summaryReportDto
+        {
+            path = "UDTs/index.html",
+            fullPath = Path.Combine(udtsFolderPath, "index.html"),
+            html = udtHtml,
+            count = udtCount
+        };
+    }
+
     private static string MakeSafe(string name)
     {
         // Helper method to sanitize file names

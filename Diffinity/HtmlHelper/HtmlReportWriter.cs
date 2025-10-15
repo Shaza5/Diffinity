@@ -88,6 +88,7 @@ public static class HtmlReportWriter
         <li>{procsIndex}</li>
         <li>{viewsIndex}</li>
         <li>{tablesIndex}</li>
+        <li>{udtsIndex}</li>
         <li>{ignoredIndex}</li>
     </ul>
 </body>
@@ -592,7 +593,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
     /// </summary>
-    public static string WriteIndexSummary(string sourceConnectionString, string destinationConnectionString, string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null)
+    public static string WriteIndexSummary(string sourceConnectionString, string destinationConnectionString, string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null, string? udtIndexPath = null)
     {
         // Extract server and database names from connection strings
         var sourceBuilder = new SqlConnectionStringBuilder(sourceConnectionString);
@@ -613,10 +614,13 @@ public static class HtmlReportWriter
         string procsIndex = procIndexPath == null ? "" : $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
         string viewsIndex = viewIndexPath == null ? "" : $@"<a href=""{viewIndexPath}"" class=""btn"">Views</a>";
         string tablesIndex = tableIndexPath == null ? "" : $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>";
+        string udtsIndex = udtIndexPath == null ? "" : $@"<a href=""{udtIndexPath}"" class=""btn"">UDTs</a>";
         string ignoredIndex = ignoredIndexPath == null ? "" : $@"<a href=""{ignoredIndexPath}"" class=""btn"">Ignored</a>";
 
+
         // Replace placeholders in the index template
-        html.Append(IndexTemplate.Replace("{sourceServer}", sourceServer).Replace("{sourceDatabase}", sourceDatabase).Replace("{destinationServer}", destinationServer).Replace("{destinationDatabase}", destinationDatabase).Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex).Replace("{ignoredIndex}", ignoredIndex).Replace("{Date}", Date).Replace("{Duration}", formattedDuration));
+        html.Append(IndexTemplate.Replace("{sourceServer}", sourceServer).Replace("{sourceDatabase}", sourceDatabase).Replace("{destinationServer}", destinationServer).Replace("{destinationDatabase}", destinationDatabase).Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex).Replace("{ignoredIndex}", ignoredIndex).Replace("{Date}", Date).Replace("{Duration}", formattedDuration).Replace("{udtsIndex}", udtsIndex)
+);
         string indexPath = Path.Combine(outputPath, "index.html");
 
         // Write to index.html
@@ -1114,6 +1118,7 @@ public static class HtmlReportWriter
         string proceduresPath = "../Procedures/index.html";
         string viewsPath = "../Views/index.html";
         string tablesPath = "../Tables/index.html";
+        string udtsPath = "../UDTs/index.html";
         string ignoredPath = "../Ignored/index.html";
         var sb = new StringBuilder();
         sb.AppendLine(@"<nav class=""top-nav"">");
@@ -1127,6 +1132,9 @@ public static class HtmlReportWriter
                 break;
             case Run.Table:
                 sb.AppendLine($@"  <a href=""{tablesPath}"">Tables {{tablesCount}}</a>");
+                break;
+            case Run.Udt:
+                sb.AppendLine($@"  <a href=""{udtsPath}"">UDTs {{udtsCount}}</a>");
                 break;
             case Run.ProcView:
                 sb.AppendLine($@"  <a href=""{proceduresPath}"">Procedures {{procsCount}}</a>");
@@ -1145,6 +1153,7 @@ public static class HtmlReportWriter
                 sb.AppendLine($@"  <a href=""{proceduresPath}"">Procedures {{procsCount}}</a>");
                 sb.AppendLine($@"  <a href=""{viewsPath}"">Views {{viewsCount}}</a>");
                 sb.AppendLine($@"  <a href=""{tablesPath}"">Tables {{tablesCount}}</a>");
+                sb.AppendLine($@"  <a href=""{udtsPath}"">UDTs {{udtsCount}}</a>");
                 break;
 
             default:
