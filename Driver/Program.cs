@@ -9,8 +9,8 @@ internal class Program
        // var Corewell = new DbServer("Corewell", Environment.GetEnvironmentVariable("connectionString"));
         //var CMH      = new DbServer("CMH", Environment.GetEnvironmentVariable("cmhCs"));
 
-        var localDB3 = new DbServer("localDB3", Environment.GetEnvironmentVariable("localDB3"));
-        var localDB4 = new DbServer("localDB4", Environment.GetEnvironmentVariable("localDB4"));
+        var localDB3 = new DbServer("connection1", Environment.GetEnvironmentVariable("localDB3"));
+        var localDB4 = new DbServer("connection2", Environment.GetEnvironmentVariable("localDB4"));
 
         string IndexPage = DbComparer.Compare(localDB3, localDB4);
         #region Optional
