@@ -421,18 +421,25 @@ public static class HtmlReportWriter
         .icon-btn{
             background: none;
             border: none;
-            padding: 0 4px;
+            padding: 0;
             cursor: pointer;
-            display: inline-block;   
+            display: inline-block;
             vertical-align: middle;
             line-height: 0;
-            margin-left: 6px;
+
         }
         .icon-btn svg{
             width: 20px;
             height: 20px;
             display: block;
             fill: #000;
+        }
+
+        .card-head{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
         }
 
 
@@ -822,35 +829,40 @@ public static class HtmlReportWriter
 
         html.AppendLine($@"<body>
     <h1>{title}</h1>
-    <div>
-        <span class=""use"">Use {title}</span>
-        <button class='icon-btn' onclick='copyPane(this)' aria-label='Copy' title='Copy'>
+
+        <div class=""card-head"">
+          <span class=""use"">Use {title}</span>
+          <button class='icon-btn' onclick='copyPane(this)' aria-label='Copy' title='Copy'>
             <svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true"">
-                <path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/>
+              <path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/>
             </svg>
-        </button>
-        <div class=""code-scroll"">
-            <span class=""copy-target"">{coloredCode}</span>
+          </button>
         </div>
-    </div>
+        <div class=""code-scroll"">
+        <span class=""copy-target"">{coloredCode}</span>
+
+        </div>
 
     <script>
-      const COPY_SVG = `<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true""><path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/></svg>`;
-      const CHECK_SVG = `<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true""><path d=""M9 16.2l-3.5-3.5 1.4-1.4L9 13.4l7.1-7.1 1.4 1.4L9 16.2z""/></svg>`;
+        const COPY_SVG = `<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true""><path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/></svg>`;
+        const CHECK_SVG = `<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true""><path d=""M9 16.2l-3.5-3.5 1.4-1.4L9 13.4l7.1-7.1 1.4 1.4L9 16.2z""/></svg>`;
 
-      function copyPane(button) {{
-        const container = button.closest('div');
-        const codeBlock = container.querySelector('.copy-target');
-        const text = (codeBlock?.innerText || '').trim();
+        function copyPane(button) {{
+          const header = button.closest('.card-head');
+          const codeScroll = header?.nextElementSibling;
+          const codeBlock = codeScroll?.querySelector('.copy-target') 
+                          || document.querySelector('.copy-target'); 
 
-        navigator.clipboard.writeText(text).then(() => {{
-          button.innerHTML = CHECK_SVG;
-          setTimeout(() => {{ button.innerHTML = COPY_SVG; }}, 2000);
-        }}).catch(err => {{
-          console.error('Copy failed:', err);
-          alert('Failed to copy!');
-        }});
-      }}
+          const text = (codeBlock?.innerText || '').trim();
+
+          navigator.clipboard.writeText(text).then(() => {{
+            button.innerHTML = CHECK_SVG;
+            setTimeout(() => {{ button.innerHTML = COPY_SVG; }}, 2000);
+          }}).catch(err => {{
+            console.error('Copy failed:', err);
+            alert('Failed to copy!');
+          }});
+        }}
     </script>
 
     <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
