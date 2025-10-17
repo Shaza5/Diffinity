@@ -925,7 +925,7 @@ public static class HtmlReportWriter
                  </html>");
         File.WriteAllText(differencesPath, html.ToString());
 
-        #region local functions
+        #region local function
         string Normalize(string input)
         {
             if (input == null) return null;
