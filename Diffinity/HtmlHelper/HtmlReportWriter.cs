@@ -689,7 +689,7 @@ public static class HtmlReportWriter
                 </script>"
             );
             html.Replace("{NewTable}", newTable.ToString());
-     
+
         }
         else
         {
@@ -703,24 +703,24 @@ public static class HtmlReportWriter
         html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s :</h2>");
         foreach (var item in existingObjects)
         {
-                html.Replace("{differences}", "<th>Changes</th>");
-                // Prepare file links
-                string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
-                string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>" : "—";
-                string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
-                string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
+            html.Replace("{differences}", "<th>Changes</th>");
+            // Prepare file links
+            string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
+            string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>" : "—";
+            string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
+            string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
-                if ((item.IsEqual && filter == DbObjectFilter.ShowUnchanged) || !item.IsEqual)
-                {
-                    html.Append($@"<tr>
+            if ((item.IsEqual && filter == DbObjectFilter.ShowUnchanged) || !item.IsEqual)
+            {
+                html.Append($@"<tr>
                     <td>{Number}</td>
                     <td>{item.schema}.{item.Name}</td>
                     <td>{sourceColumn}</td>
                     <td>{destinationColumn}</td>
                     <td>{differencesColumn}</td>
                      </tr>");
-                    Number++;
-                }
+                Number++;
+            }
         }
         html.Append($@"</table>
                        <br>
@@ -836,8 +836,8 @@ public static class HtmlReportWriter
         var differ = new Differ();
         string normalizedSourceBody = Normalize(sourceBody);
         string normalizedDestinationBody = Normalize(destinationBody);
-        string[] sourceBodyColored = HighlightSql(normalizedSourceBody).Split("\n");
-        string[] destinationBodyColored = HighlightSql(normalizedDestinationBody).Split("\n");
+        string[] sourceBodyColored = NoBlanks(HighlightSql(normalizedSourceBody));
+        string[] destinationBodyColored = NoBlanks(HighlightSql(normalizedDestinationBody));
         var sideBySideBuilder = new SideBySideDiffBuilder(differ);
         var model = sideBySideBuilder.BuildDiffModel(string.Join("\n", destinationBodyColored), string.Join("\n", sourceBodyColored));
 
@@ -925,13 +925,27 @@ public static class HtmlReportWriter
                  </html>");
         File.WriteAllText(differencesPath, html.ToString());
 
-        #region local function
+        #region local functions
         string Normalize(string input)
         {
             if (input == null) return null;
 
             // Normalize the input for consistent comparison
             return input.Replace("[", "").Replace("]", "");
+        }
+
+        string[] NoBlanks(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return Array.Empty<string>();
+
+            // Normalize line endings first
+            s = s.Replace("\r\n", "\n");
+
+            // Trim leading blank/whitespace lines so line 1 is real content
+            s = s.TrimStart('\n', '\r', ' ', '\t');
+
+            // Split into lines for DiffPlex rendering
+            return s.Split('\n');
         }
         #endregion
     }
