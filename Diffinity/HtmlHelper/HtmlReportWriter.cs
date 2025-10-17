@@ -173,21 +173,25 @@ public static class HtmlReportWriter
         .top-nav a:hover::after {
             transform: scaleX(1);
         }
-        .copy-btn {
-            float: right;
-            margin: 0px 12px 0px 50px;
-            background-color: #EC317F;
-            color: white;
+       
+        .icon-btn{
+            background: none;
             border: none;
-            font-size : 15px;
-            padding: 10px 12px;
-            border-radius: 4px;
+            padding: 0 4px;
             cursor: pointer;
-            box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
+            display: inline-block;   
+            vertical-align: middle;
+            line-height: 0;
+            margin-left: 6px;
         }
-        .copy-btn:hover {
-              background-color: #b42a68;
+        .icon-btn svg{
+            width: 20px;
+            height: 20px;
+            display: block;
+            fill: #000;
         }
+
+
         .return-btn {
             display: block;
             width: 220px;
@@ -414,21 +418,25 @@ public static class HtmlReportWriter
         }
         .red {color: red;
     }
-        .copy-btn {
-            float: right;
-            margin: 0px 12px 0px 50px;
-            background-color: #EC317F;
-            color: white;
+        .icon-btn{
+            background: none;
             border: none;
-            font-size : 15px;
-            padding: 10px 12px;
-            border-radius: 4px;
+            padding: 0 4px;
             cursor: pointer;
-            box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
+            display: inline-block;   
+            vertical-align: middle;
+            line-height: 0;
+            margin-left: 6px;
         }
-        .copy-btn:hover {
-              background-color: #b42a68;
+        .icon-btn svg{
+            width: 20px;
+            height: 20px;
+            display: block;
+            fill: #000;
         }
+
+
+
         .use{
             color: #EC317F;
             font-weight : bold;
@@ -546,22 +554,23 @@ public static class HtmlReportWriter
               font-family: Consolas;
               overflow-wrap: break-word;
          }
-        .copy-btn {
-            float: right;
-            margin: 3px 12px 0px 50px;
-            background-color: #EC317F;
-            color: white;
+
+        .icon-btn{
+            background: none;
             border: none;
-            top: -2px;
-            font-size : 15px;
-            padding: 10px 12px;
-            border-radius: 4px;
+            padding: 0;
             cursor: pointer;
-            box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
+            float: right;          
+            margin: 3px 12px 0 50px;
+            line-height: 0;
         }
-        .copy-btn:hover {
-              background-color: #b42a68;
+        .icon-btn svg{
+            width: 20px;
+            height: 20px;
+            display: block;
+            fill: #000;
         }
+
        .return-btn {
             display: block;
             width: 220px;
@@ -658,8 +667,13 @@ public static class HtmlReportWriter
 
 
                 string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
-                string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">❐</button><br>
-                       <span class=""copy-target"" style=""display:none;"">{sourceBody}</span>";
+                string copyButton = $@"<button class=""icon-btn"" onclick=""copyPane(this)"" aria-label=""Copy"" title=""Copy"">
+                          <svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true"">
+                            <path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/>
+                          </svg>
+                        </button><br>
+                        <span class=""copy-target"" style=""display:none;"">{sourceBody}</span>";
+
 
                 newTable.Append($@"<tr>
                                 <td>{newCount}</td>
@@ -673,20 +687,28 @@ public static class HtmlReportWriter
             newTable.Append("</table><br><br>");
             newTable.AppendLine(
                 @"<script>
-                    function copyPane(button) {
-                        const container = button.closest('tr');
-                        const codeBlock = container.querySelector('.copy-target');
-                        const text = codeBlock?.innerText.trim();
+                      const COPY_SVG = `<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true"">
+                        <path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/>
+                      </svg>`;
+                      const CHECK_SVG = `<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true"">
+                        <path d=""M9 16.2l-3.5-3.5 1.4-1.4L9 13.4l7.1-7.1 1.4 1.4L9 16.2z""/>
+                      </svg>`;
+
+                      function copyPane(button) {
+                        const row = button.closest('tr');
+                        const block = row.querySelector('.copy-target');
+                        const text = (block?.innerText || '').trim();
 
                         navigator.clipboard.writeText(text).then(() => {
-                            button.textContent = '✔';
-                            setTimeout(() => button.textContent = '❐', 2000);
+                          button.innerHTML = CHECK_SVG;
+                          setTimeout(() => { button.innerHTML = COPY_SVG; }, 2000);
                         }).catch(err => {
-                            console.error('Copy failed:', err);
-                            alert('Failed to copy!');
+                          console.error('Copy failed:', err);
+                          alert('Failed to copy!');
                         });
-                     }
-                </script>"
+                      }
+                  </script>
+"
             );
             html.Replace("{NewTable}", newTable.ToString());
      
@@ -799,30 +821,42 @@ public static class HtmlReportWriter
 
 
         html.AppendLine($@"<body>
-        <h1>{title}</h1>
-            <div>
-            <span class=""use"">Use {title}</span> <button class='copy-btn' onclick='copyPane(this)'>❐</button><br>
+    <h1>{title}</h1>
+    <div>
+        <span class=""use"">Use {title}</span>
+        <button class='icon-btn' onclick='copyPane(this)' aria-label='Copy' title='Copy'>
+            <svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true"">
+                <path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/>
+            </svg>
+        </button>
+        <div class=""code-scroll"">
             <span class=""copy-target"">{coloredCode}</span>
-            </div>
-            
-            <script>
-                function copyPane(button) {{
-                    const container = button.closest('div');
-                    const codeBlock = container.querySelector('.copy-target');
-                    const text = codeBlock?.innerText.trim();
-            
-                    navigator.clipboard.writeText(text).then(() => {{
-                        button.textContent = '✔';
-                        setTimeout(() => button.textContent = '❐', 2000);
-                    }}).catch(err => {{
-                        console.error('Copy failed:', err);
-                        alert('Failed to copy!');
-                    }});
-                }}
-            </script>
-            <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
-            </body>
-            </html>");
+        </div>
+    </div>
+
+    <script>
+      const COPY_SVG = `<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true""><path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/></svg>`;
+      const CHECK_SVG = `<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true""><path d=""M9 16.2l-3.5-3.5 1.4-1.4L9 13.4l7.1-7.1 1.4 1.4L9 16.2z""/></svg>`;
+
+      function copyPane(button) {{
+        const container = button.closest('div');
+        const codeBlock = container.querySelector('.copy-target');
+        const text = (codeBlock?.innerText || '').trim();
+
+        navigator.clipboard.writeText(text).then(() => {{
+          button.innerHTML = CHECK_SVG;
+          setTimeout(() => {{ button.innerHTML = COPY_SVG; }}, 2000);
+        }}).catch(err => {{
+          console.error('Copy failed:', err);
+          alert('Failed to copy!');
+        }});
+      }}
+    </script>
+
+    <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
+</body>
+</html>");
+
         File.WriteAllText(filePath, html.ToString());
     }
     #endregion
@@ -845,10 +879,16 @@ public static class HtmlReportWriter
         html.AppendLine(DifferencesTemplate.Replace("{title}", title));
 
         // Source block
-        html.AppendLine(@$"<h1>{Name}</h1>
+        html.AppendLine($@"<h1>{Name}</h1>
                         <div class='diff-wrapper'>
                         <div class='pane'>
-                        <button class='copy-btn' data-target='left'>❐</button>
+                            <button class='icon-btn' data-target='left' aria-label='Copy' title='Copy'>
+                              <svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true"">
+                                <path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/>
+                              </svg>
+                            </button>
+
+
                         <h2>{sourceName}</h2>
                         <div class='code-scroll' id='left'><div class='code-block'>
 
@@ -857,13 +897,18 @@ public static class HtmlReportWriter
         {
             string css = GetCssClass(line.Type);
             string lineNumber = line.Position == 0 ? "" : line.Position.ToString();
-            html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
+            html.AppendLine($@"<div class='line-number'>{lineNumber}</div>
                             <div class='line-text {css}'>{line.Text}</div>");
         }
         // Destination block
         html.Append($@"</div></div></div>
                         <div class='pane'>
-                        <button class='copy-btn' data-target='right'>❐</button>
+                            <button class='icon-btn' data-target='right' aria-label='Copy' title='Copy'>
+                              <svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true"">
+                                <path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/>
+                              </svg>
+                            </button>
+
                         <h2>{destinationName}</h2>
                         <div class='code-scroll' id='right'><div class='code-block'>
                         ");
@@ -871,28 +916,38 @@ public static class HtmlReportWriter
         {
             string css = GetCssClass(line.Type);
             string lineNumber = line.Position == 0 ? "" : line.Position.ToString();
-            html.AppendLine(@$"<div class='line-number'>{lineNumber}</div>
+            html.AppendLine($@"<div class='line-number'>{lineNumber}</div>
                            <div class='line-text {css}'>{line.Text}</div>");
         }
 
         // Scroll sync script
-        html.AppendLine(@$"</div></div></div></div><br>
+        html.AppendLine($@"</div></div></div></div><br>
                  <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
               
                 <script>
-                document.querySelectorAll('.copy-btn').forEach(button => {{
-                    button.addEventListener('click', () => {{
-                        const targetId = button.getAttribute('data-target');
-                        const block = document.getElementById(targetId);
-                        const text = Array.from(block.querySelectorAll('.line-text'))
-                                          .map(line => line.textContent)
-                                          .join('\n');
-                        navigator.clipboard.writeText(text).then(() => {{
-                            button.textContent = '✔';
-                            setTimeout(() => button.textContent = '❐', 2000);
+                        const COPY_SVG = `<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true"">
+                          <path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/>
+                        </svg>`;
+                        const CHECK_SVG = `<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""#000"" aria-hidden=""true"">
+                          <path d=""M9 16.2l-3.5-3.5 1.4-1.4L9 13.4l7.1-7.1 1.4 1.4L9 16.2z""/>
+                        </svg>`;
+
+                        document.querySelectorAll('.icon-btn[data-target]').forEach(button => {{
+                          button.addEventListener('click', () => {{
+                            const targetId = button.getAttribute('data-target');
+                            const block = document.getElementById(targetId);
+                            const text = Array.from(block.querySelectorAll('.line-text'))
+                                              .map(n => n.textContent)
+                                              .join('\n');
+
+                            navigator.clipboard.writeText(text).then(() => {{
+                              button.innerHTML = CHECK_SVG;
+                              setTimeout(() => {{ button.innerHTML = COPY_SVG; }}, 2000);
+                            }});
+                          }});
                         }});
-                    }});
-                }});
+
+
                 </script>
                  <script>
                  const blocks = document.querySelectorAll('.code-scroll');
