@@ -618,11 +618,11 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
     /// </summary>
-    public static string WriteIndexSummary(string sourceConnectionString, string destinationConnectionString, string sourceConnectionName, string destinationConnectionName, string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null)
+    public static string WriteIndexSummary(DbServer source, DbServer destination, string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null)
     {
         // Extract server and database names from connection strings
-        var sourceBuilder = new SqlConnectionStringBuilder(sourceConnectionString);
-        var destinationBuilder = new SqlConnectionStringBuilder(destinationConnectionString);
+        var sourceBuilder = new SqlConnectionStringBuilder(source.connectionString);
+        var destinationBuilder = new SqlConnectionStringBuilder(destination.connectionString);
 
         string sourceServer = sourceBuilder.DataSource;
         string destinationServer = destinationBuilder.DataSource;
@@ -641,12 +641,12 @@ public static class HtmlReportWriter
     <th>Database</th>
   </tr>
   <tr>
-    <td>{sourceConnectionName}</td>
+    <td>{source.name}</td>
     <td>{sourceServer}</td>
     <td>{sourceDatabase}</td>
   </tr>
   <tr>
-    <td>{destinationConnectionName}</td>
+    <td>{destination.name}</td>
     <td>{destinationServer}</td>
     <td>{destinationDatabase}</td>
   </tr>
