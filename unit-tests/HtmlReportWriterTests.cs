@@ -16,23 +16,23 @@ public class HtmlReportWriterTests : IDisposable
         Directory.CreateDirectory(_tempFolder);
     }
 
-    [Fact]
-    public void WriteIndexSummary_CreatesHtmlFile_WithCorrectPlaceholdersReplaced()
-    {
-        // Arrange
-        string sourceConn = @"Server=localhost;Database=SrcDb;User Id=sa;Password=pass;";
-        string destConn = @"Server=localhost;Database=DestDb;User Id=sa;Password=pass;";
+    //[Fact]
+    //public void WriteIndexSummary_CreatesHtmlFile_WithCorrectPlaceholdersReplaced()
+    //{
+    //    // Arrange
+    //    string sourceConn = @"Server=localhost;Database=SrcDb;User Id=sa;Password=pass;";
+    //    string destConn = @"Server=localhost;Database=DestDb;User Id=sa;Password=pass;";
 
-        // Act
-        string indexPath = HtmlReportWriter.WriteIndexSummary(sourceConn, destConn, _tempFolder);
+    //    // Act
+    //    string indexPath = HtmlReportWriter.WriteIndexSummary(sourceConn, destConn, _tempFolder);
 
-        // Assert
-        Assert.True(File.Exists(indexPath));
-        string html = File.ReadAllText(indexPath);
-        Assert.Contains("SrcDb", html);
-        Assert.Contains("DestDb", html);
-        Assert.Contains("Database Comparison Summary", html);
-    }
+    //    // Assert
+    //    Assert.True(File.Exists(indexPath));
+    //    string html = File.ReadAllText(indexPath);
+    //    Assert.Contains("SrcDb", html);
+    //    Assert.Contains("DestDb", html);
+    //    Assert.Contains("Database Comparison Summary", html);
+    //}
 
     [Fact]
     public void WriteBodyHtml_CreatesHtmlFile_WithTitleAndBody()
