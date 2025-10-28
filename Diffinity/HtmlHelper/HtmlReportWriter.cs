@@ -559,7 +559,7 @@ public static class HtmlReportWriter
             padding: 0;
             border-radius: 8px;
             overflow: hidden;
-            height: 650px;
+            height: auto;
             border: 1px solid #ddd;
             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
         }
@@ -573,8 +573,9 @@ public static class HtmlReportWriter
             font-size: 1rem;
         }
        .code-scroll {
-            height: 605px;
+            height: 60vh;
             overflow: auto; 
+            width: 100%;
         }
         .code-block {
             display: grid;
@@ -583,7 +584,6 @@ public static class HtmlReportWriter
             line-height: 1.4;
             padding: 10px;
             white-space: pre;
-            width: fit-content; 
         }
 
          .line-number {
@@ -596,6 +596,7 @@ public static class HtmlReportWriter
               white-space: pre;        
               font-family: Consolas;
               overflow-wrap: break-word;
+              width: 100%;
          }
         .copy-btn {
               float: right;
