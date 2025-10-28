@@ -931,8 +931,8 @@ public static class HtmlReportWriter
         var differ = new Differ();
         string normalizedSourceBody = Normalize(sourceBody);
         string normalizedDestinationBody = Normalize(destinationBody);
-        string[] sourceBodyColored = HighlightSql(normalizedSourceBody).Split("\n");
-        string[] destinationBodyColored = HighlightSql(normalizedDestinationBody).Split("\n");
+        string[] sourceBodyColored = NoBlanks(HighlightSql(normalizedSourceBody));
+        string[] destinationBodyColored = NoBlanks(HighlightSql(normalizedDestinationBody));
         var sideBySideBuilder = new SideBySideDiffBuilder(differ);
         var model = sideBySideBuilder.BuildDiffModel(string.Join("\n", destinationBodyColored), string.Join("\n", sourceBodyColored));
 
@@ -1020,13 +1020,27 @@ public static class HtmlReportWriter
                  </html>");
         File.WriteAllText(differencesPath, html.ToString());
 
-        #region local function
+        #region local functions
         string Normalize(string input)
         {
             if (input == null) return null;
 
             // Normalize the input for consistent comparison
             return input.Replace("[", "").Replace("]", "");
+        }
+
+        string[] NoBlanks(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return Array.Empty<string>();
+
+            // Normalize line endings first
+            s = s.Replace("\r\n", "\n");
+
+            // Trim leading blank/whitespace lines so line 1 is real content
+            s = s.TrimStart('\n', '\r', ' ', '\t');
+
+            // Split into lines for DiffPlex rendering
+            return s.Split('\n');
         }
         #endregion
     }
