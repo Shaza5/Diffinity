@@ -656,7 +656,7 @@ public static class HtmlReportWriter
             {
 
                 string copyPayload = item.Type == "Table"
-                    ? BuildCreateTableDDL(item.schema, item.Name, item.SourceTableInfo)
+                    ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo)
                     : item.SourceBody;
 
 
@@ -789,16 +789,18 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the HTML page showing the body of a single procedure/view/table, with copy functionality.
     /// </summary>
-    public static void WriteBodyHtml(string filePath, string title, string body, string returnPage)
+    public static void WriteBodyHtml(string filePath, string title, string body, string returnPage, string ? createTableScript=null)
     {
         StringBuilder html = new StringBuilder();
         html.AppendLine(BodyTemplate.Replace("{title}", title));
         string coloredCode = HighlightSql(body);
+        string toCopy = coloredCode;
         //string escapedBody = EscapeHtml(body);
 
         if (title.Contains("Table"))
         {
             coloredCode = body;
+            toCopy = createTableScript;
         }
 
 
@@ -806,9 +808,10 @@ public static class HtmlReportWriter
         <h1>{title}</h1>
             <div>
             <span class=""use"">Use {title}</span> <button class='copy-btn' onclick='copyPane(this)'>Copy</button><br>
-            <span class=""copy-target"">{coloredCode}</span>
+            <span class=""copy-target"" style= ""display:none"">{toCopy}</span>
+             {coloredCode}
             </div>
-            
+
             <script>
                 function copyPane(button) {{
                     const container = button.closest('div');
@@ -830,46 +833,6 @@ public static class HtmlReportWriter
         File.WriteAllText(filePath, html.ToString());
     }
     #endregion
-
-    public static void WriteTableHtml(string filePath, string title, string tableHtmlToDisplay, string createSqlToCopy, string returnPage)
-    {
-        var html = new StringBuilder();
-        html.AppendLine(BodyTemplate.Replace("{title}", title));
-
-        // Show the grid, but copy the CREATE TABLE (hidden).
-        html.AppendLine($@"
-<body>
-    <h1>{title}</h1>
-    <div>
-        <span class=""use"">Use {title}</span>
-        <button class='copy-btn' onclick='copyPane(this)'>Copy</button><br>
-
-        {tableHtmlToDisplay}
-
-        <span class=""copy-target"" style=""display:none;"">{WebUtility.HtmlEncode(createSqlToCopy)}</span>
-    </div>
-
-    <script>
-        function copyPane(button) {{
-            const container = button.closest('div');
-            const codeBlock = container.querySelector('.copy-target');
-            const text = codeBlock?.innerText.trim();
-
-            navigator.clipboard.writeText(text).then(() => {{
-                button.textContent = 'Copied!';
-                setTimeout(() => button.textContent = 'Copy', 2000);
-            }}).catch(err => {{
-                console.error('Copy failed:', err);
-                alert('Failed to copy!');
-            }});
-        }}
-    </script>
-    <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
-</body>
-</html>");
-        File.WriteAllText(filePath, html.ToString());
-    }
-
 
     #region Differences Writer
     /// <summary>
@@ -1127,7 +1090,7 @@ public static class HtmlReportWriter
     #region Helpers
 
 
-    public static string BuildCreateTableDDL(string schema, string table, List<tableDto> cols)
+    public static string CreateTableScript(string schema, string table, List<tableDto> cols)
     {
         if (cols == null || cols.Count == 0)
             return $"-- Table [{schema}].[{table}] has no columns?";

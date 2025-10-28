@@ -472,13 +472,11 @@ public class DbComparer : DbObjectHandler
                 Directory.CreateDirectory(schemaFolder);
                 string sourcePath = Path.Combine(schemaFolder, sourceFile);
                 string destinationPath = Path.Combine(schemaFolder, destinationFile);
-                var sourceGrid = HtmlReportWriter.PrintTableInfo(sourceInfo, allDifferences);
-                var sourceDDL = HtmlReportWriter.BuildCreateTableDDL(schema, table, sourceInfo);
-                HtmlReportWriter.WriteTableHtml(sourcePath, $"{sourceServer.name} Table", sourceGrid, sourceDDL, returnPage);
+                var sourceTableScript = HtmlReportWriter.CreateTableScript(schema, table, sourceInfo);
+                HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name} Table", HtmlReportWriter.PrintTableInfo(sourceInfo, allDifferences), returnPage, sourceTableScript);
 
-                var destGrid = HtmlReportWriter.PrintTableInfo(destinationInfo, allDifferences);
-                var destDDL = HtmlReportWriter.BuildCreateTableDDL(schema, table, destinationInfo);
-                HtmlReportWriter.WriteTableHtml(destinationPath, $"{destinationServer.name} Table", destGrid, destDDL, returnPage);
+                var destTableScript = HtmlReportWriter.CreateTableScript(schema, table, destinationInfo);
+                HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationInfo, allDifferences), returnPage, destTableScript);
 
                 if (!isDestinationEmpty && !areEqual)
                 {
@@ -508,9 +506,8 @@ public class DbComparer : DbObjectHandler
             {
                 (_, destinationNewInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, schema, table);
                 string newPath = Path.Combine(schemaFolder, newFile);
-                var newGrid = HtmlReportWriter.PrintTableInfo(destinationNewInfo, null);
-                var newDDL = HtmlReportWriter.BuildCreateTableDDL(schema, table, destinationNewInfo);
-                HtmlReportWriter.WriteTableHtml(newPath, $"New {destinationServer.name} Table", newGrid, newDDL, returnPage);
+                var newTableScript = HtmlReportWriter.CreateTableScript(schema, table, destinationNewInfo);
+                HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationNewInfo, null), returnPage, newTableScript);
                 wasAltered = true;
             }
 
