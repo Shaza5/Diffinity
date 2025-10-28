@@ -1124,13 +1124,13 @@ public static class HtmlReportWriter
         html.AppendLine($@"
             </div>
             <a href='{returnPage}' class='return-btn'>Return to Summary</a>
-            <script>
+              <script>
             const blocks = document.querySelectorAll('.code-scroll');
-            function syncScrollY(src, tgt) {{ tgt.scrollTop = src.scrollTop; }}
+            function syncScroll(src, tgt) {{ tgt.scrollTop = src.scrollTop; tgt.scrollLeft = src.scrollLeft; }}
             if (blocks.length === 2) {{
               let isSyncing = false;
-              blocks[0].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScrollY(blocks[0], blocks[1]); isSyncing = false; }});
-              blocks[1].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScrollY(blocks[1], blocks[0]); isSyncing = false; }});
+              blocks[0].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScroll(blocks[0], blocks[1]); isSyncing = false; }});
+              blocks[1].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScroll(blocks[1], blocks[0]); isSyncing = false; }});
             }}
             </script>
             </body>
