@@ -653,7 +653,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
     /// </summary>
-    public static string WriteIndexSummary(DbServer source, DbServer destination, string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null)
+    public static string WriteIndexSummary(DbServer source, DbServer destination,string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null, int? procCount = 0, int? viewCount = 0 , int? tableCount = 0)
     {
         // Extract server and database names from connection strings
         var sourceBuilder = new SqlConnectionStringBuilder(source.connectionString);
@@ -695,11 +695,21 @@ public static class HtmlReportWriter
         double minutes = Duration / 60000.0;
         string formattedDuration = $"{minutes:F1} minutes";
 
-        // Create links to individual index pages
-        string procsIndex = procIndexPath == null ? "" : $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
-        string viewsIndex = viewIndexPath == null ? "" : $@"<a href=""{viewIndexPath}"" class=""btn"">Views</a>";
-        string tablesIndex = tableIndexPath == null ? "" : $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>";
-        string ignoredIndex = ignoredIndexPath == null ? "" : $@"<a href=""{ignoredIndexPath}"" class=""btn"">Ignored</a>";
+        static bool Show(string? path, int count) =>
+            !string.IsNullOrWhiteSpace(path) && (count > 0);
+
+        string procsIndex = Show(procIndexPath, procCount.Value)
+            ? $@"<a href=""{procIndexPath}""  class=""btn"">Procedures</a>" : "";
+
+        string viewsIndex = Show(viewIndexPath, viewCount.Value)
+            ? $@"<a href=""{viewIndexPath}""  class=""btn"">Views</a>" : "";
+
+        string tablesIndex = Show(tableIndexPath, tableCount.Value)
+            ? $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>" : "";
+
+        string ignoredIndex = string.IsNullOrWhiteSpace(ignoredIndexPath)
+            ? ""
+            : $@"<a href=""{ignoredIndexPath}"" class=""btn"">Ignored</a>";
 
         // Replace placeholders in the index template
         html.Append(
@@ -724,12 +734,12 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes a detailed summary report comparing objects (procedures, views, tables) between source and destination.
     /// </summary>
-    public static (string html, string countObjects) WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<dbObjectResult> results, DbObjectFilter filter, Run run, bool isIgnoredEmpty,string ignoredCount)
+    public static (string html, string countObjects) WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<dbObjectResult> results, DbObjectFilter filter, Run run, bool isIgnoredEmpty, string ignoredCount)
     {
         StringBuilder html = new();
         var result = results[0];
         string returnPage = Path.Combine("..", "index.html");
-        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}", BuildNav(run, isIgnoredEmpty,ignoredCount)));
+        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}", BuildNav(run, isIgnoredEmpty, ignoredCount)));
 
         #region 1-Create the new table
         var newObjects = results.Where(r => r.IsDestinationEmpty).ToList();
@@ -849,7 +859,7 @@ public static class HtmlReportWriter
         StringBuilder html = new();
         string returnPage = Path.Combine("..", "index.html");
         string ignoredCount = ignoredObjects.Count().ToString();
-        html.Append(IgnoredTemplate.Replace("{nav}", BuildNav(run, false,ignoredCount)));
+        html.Append(IgnoredTemplate.Replace("{nav}", BuildNav(run, false, ignoredCount)));
 
         #region Create the Ignored Table
         int Number = 1;
@@ -1281,7 +1291,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Write the nav section in the comparison summary pages
     /// </summary>
-    static string BuildNav(Run run, bool isIgnoredEmpty,string count)
+    static string BuildNav(Run run, bool isIgnoredEmpty, string count)
     {
         string proceduresPath = "../Procedures/index.html";
         string viewsPath = "../Views/index.html";

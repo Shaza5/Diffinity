@@ -43,7 +43,7 @@ public class DbObjectHandler
                                    .Replace("\t", "")
                                    .Replace("\n", "")
                                    .Replace("[", "")
-                                   .Replace("]","")
+                                   .Replace("]", "")
                                    .Trim();
 
             // Convert normalized string to bytes
@@ -63,7 +63,7 @@ public class DbObjectHandler
         #endregion
     }
 
-    public static void AlterDbObject(string destinationConnectionString, string sourceBody,string destinationBody)
+    public static void AlterDbObject(string destinationConnectionString, string sourceBody, string destinationBody)
     {
         /// <summary>
         /// Alters a database object on the destination server based on the source object body.
@@ -73,7 +73,7 @@ public class DbObjectHandler
         /// <param name="destinationConnectionString">Connection string for the destination database.</param>
         /// <param name="sourceBody">The source database object definition (CREATE statement).</param>
         /// <param name="destinationBody">The existing destination object definition (may be empty).</param>
-        
+
         if (string.IsNullOrWhiteSpace(sourceBody)) throw new ArgumentException("Source body cannot be null or empty.");
         using var sourceConnection = new SqlConnection(destinationConnectionString);
 
@@ -111,5 +111,5 @@ public class DbObjectHandler
         public List<tableDto> DestinationTableInfo { get; set; }
         public string? NewFile { get; set; } // null if not altered
     }
- 
+
 }
