@@ -85,20 +85,17 @@ public class DbObjectHandler
         else
         {
             // Replace CREATE keywords with ALTER to update existing object
-            string alteredBody = ReplaceCreateWithAlter(sourceBody);
+            string alteredBody =  DbObjectHandler.ReplaceCreateWithCreateOrAlter(sourceBody);
             sourceConnection.Execute(alteredBody);
         }
-
-        #region local functions
-        /// <summary>
-        /// Replaces all occurrences of 'CREATE' (any case) with 'ALTER' to convert a CREATE statement into an ALTER statement.
-        /// </summary>
-        /// <param name="body">SQL statement body to modify.</param>
-        /// <returns>Modified SQL statement with ALTER keywords.</returns>
-        string ReplaceCreateWithAlter(string body) => body.Replace("CREATE", "ALTER").Replace("Create", "ALTER").Replace("create", "ALTER");
-        #endregion
     }
-    
+    /// <summary>
+    /// Replaces all occurrences of 'CREATE' (any case) with 'ALTER' to convert a CREATE statement into an ALTER statement.
+    /// </summary>
+    /// <param name="body">SQL statement body to modify.</param>
+    /// <returns>Modified SQL statement with ALTER keywords.</returns>
+    public static string ReplaceCreateWithCreateOrAlter(string body) => body.Replace("CREATE", "CREATE OR ALTER").Replace("Create", "CREATE OR ALTER").Replace("create", "CREATE OR ALTER");
+
     public class dbObjectResult
     {
         public string Type { get; set; }
