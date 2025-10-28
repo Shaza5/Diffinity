@@ -76,14 +76,40 @@ public static class HtmlReportWriter
         text-align: center;
         margin-bottom:40px;
         }
+
+        table.conn {
+            width: 90%;
+            margin: 0 auto 24px auto;
+            border-collapse: collapse;
+        }
+
+        /* center everything */
+        table.conn th,
+        table.conn td {
+            border-bottom: 1px solid #ddd;
+            padding: 12px 14px;
+            text-align: center;
+        }
+
+        
+        table.conn th {
+            background-color: #EC317F; 
+            color: #fff;               
+        }
+
+        
+        table.conn td {
+            color: #333;               
+        }
+
     </style>
 </head>
 <body>
     <h1>Database Comparison Summary</h1>
-    <h2>{sourceServer} : {sourceDatabase}</h2>
-    <h2>{destinationServer} : {destinationDatabase}</h2>
+    {connectionsTable}
     <h3>{Date}</h3>
     <h3>{Duration}</h3>
+
     <ul>
         <li>{procsIndex}</li>
         <li>{viewsIndex}</li>
@@ -592,15 +618,40 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
     /// </summary>
-    public static string WriteIndexSummary(string sourceConnectionString, string destinationConnectionString, string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null)
+    public static string WriteIndexSummary(DbServer source, DbServer destination, string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null)
     {
         // Extract server and database names from connection strings
-        var sourceBuilder = new SqlConnectionStringBuilder(sourceConnectionString);
-        var destinationBuilder = new SqlConnectionStringBuilder(destinationConnectionString);
+        var sourceBuilder = new SqlConnectionStringBuilder(source.connectionString);
+        var destinationBuilder = new SqlConnectionStringBuilder(destination.connectionString);
+
         string sourceServer = sourceBuilder.DataSource;
         string destinationServer = destinationBuilder.DataSource;
+
         string sourceDatabase = sourceBuilder.InitialCatalog;
         string destinationDatabase = destinationBuilder.InitialCatalog;
+
+
+
+
+        string connectionsTable = $@"
+<table class=""conn"">
+  <tr>
+    <th>Connection</th>
+    <th>Server</th>
+    <th>Database</th>
+  </tr>
+  <tr>
+    <td>{source.name}</td>
+    <td>{sourceServer}</td>
+    <td>{sourceDatabase}</td>
+  </tr>
+  <tr>
+    <td>{destination.name}</td>
+    <td>{destinationServer}</td>
+    <td>{destinationDatabase}</td>
+  </tr>
+</table>";
+
 
         StringBuilder html = new StringBuilder();
         DateTime date = DateTime.UtcNow; ;
@@ -616,7 +667,16 @@ public static class HtmlReportWriter
         string ignoredIndex = ignoredIndexPath == null ? "" : $@"<a href=""{ignoredIndexPath}"" class=""btn"">Ignored</a>";
 
         // Replace placeholders in the index template
-        html.Append(IndexTemplate.Replace("{sourceServer}", sourceServer).Replace("{sourceDatabase}", sourceDatabase).Replace("{destinationServer}", destinationServer).Replace("{destinationDatabase}", destinationDatabase).Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex).Replace("{ignoredIndex}", ignoredIndex).Replace("{Date}", Date).Replace("{Duration}", formattedDuration));
+        html.Append(
+            IndexTemplate
+              .Replace("{connectionsTable}", connectionsTable)
+              .Replace("{procsIndex}", procsIndex)
+              .Replace("{viewsIndex}", viewsIndex)
+              .Replace("{tablesIndex}", tablesIndex)
+              .Replace("{ignoredIndex}", ignoredIndex)
+              .Replace("{Date}", Date)
+              .Replace("{Duration}", formattedDuration)
+        );
         string indexPath = Path.Combine(outputPath, "index.html");
 
         // Write to index.html
