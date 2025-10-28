@@ -472,8 +472,11 @@ public class DbComparer : DbObjectHandler
                 Directory.CreateDirectory(schemaFolder);
                 string sourcePath = Path.Combine(schemaFolder, sourceFile);
                 string destinationPath = Path.Combine(schemaFolder, destinationFile);
-                HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name} Table", HtmlReportWriter.PrintTableInfo(sourceInfo, allDifferences), returnPage);
-                HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationInfo, allDifferences), returnPage);
+                var sourceTableScript = HtmlReportWriter.CreateTableScript(schema, table, sourceInfo);
+                HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name} Table", HtmlReportWriter.PrintTableInfo(sourceInfo, allDifferences), returnPage, sourceTableScript);
+
+                var destTableScript = HtmlReportWriter.CreateTableScript(schema, table, destinationInfo);
+                HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationInfo, allDifferences), returnPage, destTableScript);
 
                 if (!isDestinationEmpty && !areEqual)
                 {
@@ -503,7 +506,8 @@ public class DbComparer : DbObjectHandler
             {
                 (_, destinationNewInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, schema, table);
                 string newPath = Path.Combine(schemaFolder, newFile);
-                HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationNewInfo, null), returnPage);
+                var newTableScript = HtmlReportWriter.CreateTableScript(schema, table, destinationNewInfo);
+                HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationNewInfo, null), returnPage, newTableScript);
                 wasAltered = true;
             }
 

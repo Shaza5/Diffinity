@@ -10,6 +10,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.RegularExpressions;
 using static Diffinity.DbObjectHandler;
+using System.Net; 
 
 
 
@@ -748,12 +749,14 @@ public static class HtmlReportWriter
             foreach (var item in newObjects)
             {
 
-                string sourceBody = item.Type == "Table" ? PrintTableInfo(item.SourceTableInfo, new List<string>()) : item.SourceBody;
+                string copyPayload = item.Type == "Table"
+                    ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo)
+                    : item.SourceBody;
 
 
                 string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
                 string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button><br>
-                <span class=""copy-target"" style=""display:none;"">{sourceBody}</span>";
+                <span class=""copy-target"" style=""display:none;"">{copyPayload}</span>";
 
                 newTable.Append($@"<tr>
                                 <td>{newCount}</td>
@@ -879,16 +882,18 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the HTML page showing the body of a single procedure/view/table, with copy functionality.
     /// </summary>
-    public static void WriteBodyHtml(string filePath, string title, string body, string returnPage)
+    public static void WriteBodyHtml(string filePath, string title, string body, string returnPage, string ? createTableScript=null)
     {
         StringBuilder html = new StringBuilder();
         html.AppendLine(BodyTemplate.Replace("{title}", title));
         string coloredCode = HighlightSql(body);
+        string toCopy = coloredCode;
         //string escapedBody = EscapeHtml(body);
 
         if (title.Contains("Table"))
         {
             coloredCode = body;
+            toCopy = createTableScript;
         }
 
 
@@ -898,7 +903,7 @@ public static class HtmlReportWriter
             <span class=""use"">Use {title}</span> 
             <button class='copy-btn' onclick='copyPane(this)'>{CopyIcon}{CheckIcon}</button>
             {coloredCode}
-            <span class=""copy-target"" style=""display:none;"">{body}</span> 
+            <span class=""copy-target"" style=""display:none;"">{toCopy}</span> 
             </div>
 
             <script>
@@ -1191,6 +1196,63 @@ public static class HtmlReportWriter
     #endregion
 
     #region Helpers
+
+
+    public static string CreateTableScript(string schema, string table, List<tableDto> cols)
+    {
+        if (cols == null || cols.Count == 0)
+            return $"-- Table [{schema}].[{table}] has no columns?";
+
+        string NormalizeLen(string type, string lenStr)
+        {
+            if (string.IsNullOrWhiteSpace(lenStr)) return "";
+            if (!int.TryParse(lenStr, out var len)) return "";
+
+            // nvarchar/nchar length in sys.columns is bytes. Convert to characters.
+            if (type.Equals("nvarchar", StringComparison.OrdinalIgnoreCase) ||
+                type.Equals("nchar", StringComparison.OrdinalIgnoreCase))
+            {
+                if (len == -1) return "(MAX)";
+                return $"({len / 2})";
+            }
+
+            // varchar/char length is bytes already.
+            if (type.Equals("varchar", StringComparison.OrdinalIgnoreCase) ||
+                type.Equals("char", StringComparison.OrdinalIgnoreCase))
+            {
+                if (len == -1) return "(MAX)";
+                return $"({len})";
+            }
+
+            // other types: no (length) suffix
+            return "";
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"CREATE TABLE [{schema}].[{table}] (");
+
+        for (int i = 0; i < cols.Count; i++)
+        {
+            var c = cols[i];
+            var len = NormalizeLen(c.columnType, c.maxLength);
+            var nullability = (c.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
+            var comma = (i < cols.Count - 1) ? "," : "";
+            sb.AppendLine($"    [{c.columnName}] {c.columnType}{len} {nullability}{comma}");
+        }
+
+        // Add a PK constraint if we have PK columns (single or composite)
+        var pkCols = cols.Where(x => x.isPrimaryKey?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true)
+                         .Select(x => $"[{x.columnName}]")
+                         .ToList();
+        if (pkCols.Any())
+        {
+            sb.AppendLine($",   CONSTRAINT [PK_{table}] PRIMARY KEY ({string.Join(", ", pkCols)})");
+        }
+
+        sb.AppendLine(");");
+        return sb.ToString();
+    }
+
     /// <summary>
     /// Maps DiffPlex line change types to CSS class names.
     /// </summary>
