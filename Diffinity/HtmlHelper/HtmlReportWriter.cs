@@ -662,7 +662,7 @@ public static class HtmlReportWriter
 
                 string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
                 string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">Copy</button><br>
-       <span class=""copy-target"" style=""display:none;"">{System.Net.WebUtility.HtmlEncode(copyPayload)}</span>";
+                <span class=""copy-target"" style=""display:none;"">{copyPayload}</span>";
 
 
                 newTable.Append($@"<tr>
