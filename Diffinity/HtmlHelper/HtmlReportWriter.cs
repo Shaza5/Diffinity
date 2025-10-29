@@ -852,9 +852,17 @@ public static class HtmlReportWriter
         html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s :</h2>");
         foreach (var item in existingObjects)
         {
-                // Prepare file links
-                string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
-                string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>" : "—";
+            string sourceCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo): item.SourceBody;
+            string destCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo): item.DestinationBody;
+
+            // Prepare file links
+                string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>
+                <button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button>
+                <span class=""copy-target"" style=""display:none;"">{sourceCopy}</span>": "—";
+                string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>
+                <button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button>
+                <span class=""copy-target"" style=""display:none;"">{destCopy}</span>": "—";
+
                 string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
                 string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
@@ -874,12 +882,33 @@ public static class HtmlReportWriter
                 </tr>");
                 Number++;
             }
+
         }
+        html.AppendLine(
+    @"<script>
+                    function copyPane(button) {
+                        const container = button.closest('tr');
+                        const codeBlock = container.querySelector('.copy-target');
+                        const text = codeBlock?.innerText.trim();
+
+                        navigator.clipboard.writeText(text).then(() => {
+                            button.classList.add('copied'); 
+                            setTimeout(() => button.classList.remove('copied'), 2000); 
+                        }).catch(err => {
+                            console.error('Copy failed:', err);
+                            alert('Failed to copy!');
+                        });
+                     }
+                </script>"
+);
         html.Append($@"</table>
                        <br>
                        <a href=""{returnPage}"" class=""return-btn"">Return to Index</a>
                        </body>
+
                        </html>");
+
+
         #endregion
 
         #region 3-Update counts in the nav bar

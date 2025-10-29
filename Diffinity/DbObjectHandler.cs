@@ -169,6 +169,8 @@ public class DbObjectHandler
         public string DestinationFile { get; set; }
         public string? DifferencesFile { get; set; }
         public string? SourceBody { get; set; }
+        public string? DestinationBody { get; set; }
+
         public List<tableDto> SourceTableInfo { get; set; }
         public List<tableDto> DestinationTableInfo { get; set; }
         public string? NewFile { get; set; } // null if not altered
