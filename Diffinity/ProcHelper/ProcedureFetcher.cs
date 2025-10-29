@@ -4,16 +4,16 @@ using Diffinity.DbHelper;
 
 
 namespace Diffinity.ProcHelper;
-public static class ProcedureFetcher
-{
-    private const string GetProceduresNamesQuery = @"
+    public static class ProcedureFetcher
+    {
+        private const string GetProceduresNamesQuery = @"
             SELECT s.name AS SchemaName, p.name AS ProcName
             FROM sys.procedures p
             JOIN sys.schemas s ON p.schema_id = s.schema_id
             ORDER BY s.name, p.name;
         ";
 
-    private const string GetProcedureBodyQuery = @"
+        private const string GetProcedureBodyQuery = @"
             SELECT sm.definition
             FROM sys.procedures p
             JOIN sys.schemas s ON p.schema_id = s.schema_id
@@ -21,31 +21,51 @@ public static class ProcedureFetcher
             WHERE p.name = @procName
               AND s.name = @schemaName;
         ";
-    /// <summary>
-    /// Retrieves the names of all stored procedures from the source database.
-    /// </summary>
-    /// <param name="sourceConnectionString"></param>
-    /// <returns></returns>
-    public static List<(string schema, string name)> GetProcedureNames(string sourceConnectionString)
-    {
-        using var sourceConnection = new SqlConnection(sourceConnectionString);
-        var list = sourceConnection.Query<(string schema, string name)>(GetProceduresNamesQuery).AsList();
-        return list;
-    }
+        /// <summary>
+        /// Retrieves the names of all stored procedures from the source database.
+        /// </summary>
+        public static List<(string schema, string name)> GetProcedureNames(string sourceConnectionString)
+        {
+            using var sourceConnection = new SqlConnection(sourceConnectionString);
 
+            var rawList = sourceConnection.Query<(string schema, string name)>(GetProceduresNamesQuery).AsList();
 
-    /// <summary>
-    /// Returns the body of a stored procedure from both source and destination databases.
-    /// </summary>
+            var formattedList = rawList
+                .Select(item =>
+                (
+                    schema: DbObjectHandler.BracketName(item.schema),
+                    name: DbObjectHandler.BracketName(item.name)
+                ))
+                .ToList();
+
+            return formattedList;
+        }
+
+        /// <summary>
+        /// Returns the body of a stored procedure from both source and destination databases.
+        /// </summary>
     /// <param name="procedureName"></param>
     /// <returns></returns>
     public static (string sourceBody, string destinationBody) GetProcedureBody(string sourceConnectionString, string destinationConnectionString,string schema, string procedureName)
-    {
-        using SqlConnection sourceConnection      = new SqlConnection(sourceConnectionString);
-        using SqlConnection destinationConnection = new SqlConnection(destinationConnectionString);
+        {
+            using SqlConnection sourceConnection      = new SqlConnection(sourceConnectionString);
+            using SqlConnection destinationConnection = new SqlConnection(destinationConnectionString);
 
-        string sourceBody      = DbObjectHandler.ReplaceCreateWithCreateOrAlter( sourceConnection.QueryFirst<string>(GetProcedureBodyQuery, new { procName = procedureName, schemaName = schema }));
-        string destinationBody = DbObjectHandler.ReplaceCreateWithCreateOrAlter(destinationConnection.QueryFirstOrDefault<string>(GetProcedureBodyQuery, new { procName = procedureName, schemaName = schema }) ?? "");
-        return (sourceBody, destinationBody);
+            var queryParams = new
+            {
+                procName = DbObjectHandler.RemoveBrackets(procedureName),
+                schemaName = DbObjectHandler.RemoveBrackets(schema)
+            };
+
+            string rawSourceBody = sourceConnection.QueryFirst<string>(GetProcedureBodyQuery, queryParams);
+            string rawDestBody = destinationConnection.QueryFirstOrDefault<string>(GetProcedureBodyQuery, queryParams) ?? "";
+
+            string sourceBody = DbObjectHandler.ReplaceCreateWithCreateOrAlter(rawSourceBody);
+            sourceBody = DbObjectHandler.BracketObjectNameOnly(sourceBody);
+
+            string destinationBody = DbObjectHandler.ReplaceCreateWithCreateOrAlter(rawDestBody);
+            destinationBody = DbObjectHandler.BracketObjectNameOnly(destinationBody);
+
+            return (sourceBody, destinationBody);
+        }
     }
-}

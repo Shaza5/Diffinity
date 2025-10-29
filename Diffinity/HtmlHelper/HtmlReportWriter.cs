@@ -991,10 +991,8 @@ public static class HtmlReportWriter
     public static void DifferencesWriter(string differencesPath, string sourceName, string destinationName, string sourceBody, string destinationBody, string title, string Name, string returnPage)
     {
         var differ = new Differ();
-        string normalizedSourceBody = Normalize(sourceBody);
-        string normalizedDestinationBody = Normalize(destinationBody);
-        string[] sourceBodyColored = NoBlanks(HighlightSql(normalizedSourceBody));
-        string[] destinationBodyColored = NoBlanks(HighlightSql(normalizedDestinationBody));
+        string[] sourceBodyColored = NoBlanks(HighlightSql(sourceBody));
+        string[] destinationBodyColored = NoBlanks(HighlightSql(destinationBody));
         var sideBySideBuilder = new SideBySideDiffBuilder(differ);
         var model = sideBySideBuilder.BuildDiffModel(string.Join("\n", destinationBodyColored), string.Join("\n", sourceBodyColored));
 
@@ -1083,14 +1081,6 @@ public static class HtmlReportWriter
         File.WriteAllText(differencesPath, html.ToString());
 
         #region local functions
-        string Normalize(string input)
-        {
-            if (input == null) return null;
-
-            // Normalize the input for consistent comparison
-            return input.Replace("[", "").Replace("]", "");
-        }
-
         string[] NoBlanks(string s)
         {
             if (string.IsNullOrEmpty(s)) return Array.Empty<string>();
