@@ -4,15 +4,15 @@ using Microsoft.Data.SqlClient;
 
 
 namespace Diffinity.ViewHelper;
-public static class ViewFetcher
-{
-    private const string GetViewsNamesQuery = @"
+    public static class ViewFetcher
+    {
+        private const string GetViewsNamesQuery = @"
             SELECT s.name AS SchemaName, v.name AS ViewName
             FROM sys.views v
             JOIN sys.schemas s ON v.schema_id = s.schema_id
             ORDER BY s.name, v.name;
         ";
-    private const string GetViewBodyQuery = @"
+        private const string GetViewBodyQuery = @"
             SELECT sm.definition
             FROM sys.views v
             JOIN sys.schemas s ON v.schema_id = s.schema_id

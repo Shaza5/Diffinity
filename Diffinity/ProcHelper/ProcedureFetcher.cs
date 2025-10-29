@@ -4,16 +4,16 @@ using Diffinity.DbHelper;
 
 
 namespace Diffinity.ProcHelper;
-public static class ProcedureFetcher
-{
-    private const string GetProceduresNamesQuery = @"
+    public static class ProcedureFetcher
+    {
+        private const string GetProceduresNamesQuery = @"
             SELECT s.name AS SchemaName, p.name AS ProcName
             FROM sys.procedures p
             JOIN sys.schemas s ON p.schema_id = s.schema_id
             ORDER BY s.name, p.name;
         ";
 
-    private const string GetProcedureBodyQuery = @"
+        private const string GetProcedureBodyQuery = @"
             SELECT sm.definition
             FROM sys.procedures p
             JOIN sys.schemas s ON p.schema_id = s.schema_id
