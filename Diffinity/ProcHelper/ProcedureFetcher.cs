@@ -44,8 +44,8 @@ public static class ProcedureFetcher
         using SqlConnection sourceConnection      = new SqlConnection(sourceConnectionString);
         using SqlConnection destinationConnection = new SqlConnection(destinationConnectionString);
 
-        string sourceBody      = sourceConnection.QueryFirst<string>(GetProcedureBodyQuery, new { procName = procedureName, schemaName = schema });
-        string destinationBody = destinationConnection.QueryFirstOrDefault<string>(GetProcedureBodyQuery, new { procName = procedureName, schemaName = schema }) ?? "";
+        string sourceBody      = DbObjectHandler.ReplaceCreateWithCreateOrAlter( sourceConnection.QueryFirst<string>(GetProcedureBodyQuery, new { procName = procedureName, schemaName = schema }));
+        string destinationBody = DbObjectHandler.ReplaceCreateWithCreateOrAlter(destinationConnection.QueryFirstOrDefault<string>(GetProcedureBodyQuery, new { procName = procedureName, schemaName = schema }) ?? "");
         return (sourceBody, destinationBody);
     }
 }

@@ -44,8 +44,8 @@ public static class ViewFetcher
         using SqlConnection sourceConnection      = new SqlConnection(sourceConnectionString);
         using SqlConnection destinationConnection = new SqlConnection(destinationConnectionString);
 
-        string sourceBody      = sourceConnection.QueryFirst<string>(GetViewBodyQuery, new { viewName = viewName, schemaName = schema });
-        string destinationBody = destinationConnection.QueryFirstOrDefault<string>(GetViewBodyQuery, new { viewName = viewName, schemaName = schema }) ?? "";
+        string sourceBody      = DbObjectHandler.ReplaceCreateWithCreateOrAlter(sourceConnection.QueryFirst<string>(GetViewBodyQuery, new { viewName = viewName, schemaName = schema }));
+        string destinationBody = DbObjectHandler.ReplaceCreateWithCreateOrAlter(destinationConnection.QueryFirstOrDefault<string>(GetViewBodyQuery, new { viewName = viewName, schemaName = schema }) ?? "");
         return (sourceBody, destinationBody);
     }
 }

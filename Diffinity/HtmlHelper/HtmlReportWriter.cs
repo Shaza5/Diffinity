@@ -10,6 +10,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.RegularExpressions;
 using static Diffinity.DbObjectHandler;
+using System.Net; 
 
 
 
@@ -17,6 +18,8 @@ namespace Diffinity.HtmlHelper;
 
 public static class HtmlReportWriter
 {
+    private const string CopyIcon = @"<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""currentColor"" aria-hidden=""true"" class=""icon-copy""><path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/></svg>";
+    private const string CheckIcon = @"<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""currentColor"" aria-hidden=""true"" class=""icon-check""><path d=""M9 16.2l-3.5-3.5 1.4-1.4L9 13.4l7.1-7.1 1.4 1.4L9 16.2z""/></svg>";
     private const string IndexTemplate = @"
 <!DOCTYPE html>
 <html lang=""en"">
@@ -76,14 +79,40 @@ public static class HtmlReportWriter
         text-align: center;
         margin-bottom:40px;
         }
+
+        table.conn {
+            width: 90%;
+            margin: 0 auto 24px auto;
+            border-collapse: collapse;
+        }
+
+        /* center everything */
+        table.conn th,
+        table.conn td {
+            border-bottom: 1px solid #ddd;
+            padding: 12px 14px;
+            text-align: center;
+        }
+
+        
+        table.conn th {
+            background-color: #EC317F; 
+            color: #fff;               
+        }
+
+        
+        table.conn td {
+            color: #333;               
+        }
+
     </style>
 </head>
 <body>
     <h1>Database Comparison Summary</h1>
-    <h2>{sourceServer} : {sourceDatabase}</h2>
-    <h2>{destinationServer} : {destinationDatabase}</h2>
+    {connectionsTable}
     <h3>{Date}</h3>
     <h3>{Duration}</h3>
+
     <ul>
         <li>{procsIndex}</li>
         <li>{viewsIndex}</li>
@@ -176,18 +205,26 @@ public static class HtmlReportWriter
         .copy-btn {
             float: right;
             margin: 0px 12px 0px 50px;
-            background-color: #EC317F;
-            color: white;
+            background-color: transparent;
+            color: #555; 
             border: none;
             font-size : 15px;
             padding: 10px 12px;
             border-radius: 4px;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
-        }
-        .copy-btn:hover {
-              background-color: #b42a68;
-        }
+            cursor: pointer; }
+       .copy-btn:hover {
+            background-color: #f0f0f0; 
+            color: #000; 
+       }
+       .copy-btn .icon-check {
+            display: none;
+       }
+       .copy-btn.copied .icon-check {
+            display: inline-block;
+       }
+       .copy-btn.copied .icon-copy {
+            display: none;
+       }
         .return-btn {
             display: block;
             width: 220px;
@@ -286,7 +323,15 @@ public static class HtmlReportWriter
             font-size: 1.2rem;
             padding-bottom: 6px;
         }
-        
+       .copy-btn .icon-check {
+            display: none;
+       }
+       .copy-btn.copied .icon-check {
+            display: inline-block;
+       }
+       .copy-btn.copied .icon-copy {
+            display: none;
+       }
         .top-nav a::after {
             content: '';
             position: absolute;
@@ -412,23 +457,30 @@ public static class HtmlReportWriter
             transition: background-color 0.3s ease;
             font-size: 1rem;
         }
-        .red {color: red;
-    }
+        .red {color: red;}
         .copy-btn {
             float: right;
             margin: 0px 12px 0px 50px;
-            background-color: #EC317F;
-            color: white;
+            background-color: transparent;
+            color: #555; 
             border: none;
             font-size : 15px;
             padding: 10px 12px;
             border-radius: 4px;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
-        }
+            cursor: pointer;}
         .copy-btn:hover {
-              background-color: #b42a68;
-        }
+            background-color: #f0f0f0; 
+            color: #000; 
+               }
+       .copy-btn .icon-check {
+            display: none;
+       }
+       .copy-btn.copied .icon-check {
+            display: inline-block;
+       }
+       .copy-btn.copied .icon-copy {
+            display: none;
+       }
         .use{
             color: #EC317F;
             font-weight : bold;
@@ -508,7 +560,7 @@ public static class HtmlReportWriter
             padding: 0;
             border-radius: 8px;
             overflow: hidden;
-            height: 650px;
+            height: auto;
             border: 1px solid #ddd;
             box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
         }
@@ -522,8 +574,9 @@ public static class HtmlReportWriter
             font-size: 1rem;
         }
        .code-scroll {
-            height: 605px;
+            height: 60vh;
             overflow: auto; 
+            width: 100%;
         }
         .code-block {
             display: grid;
@@ -532,7 +585,6 @@ public static class HtmlReportWriter
             line-height: 1.4;
             padding: 10px;
             white-space: pre;
-            width: fit-content; 
         }
 
          .line-number {
@@ -545,23 +597,32 @@ public static class HtmlReportWriter
               white-space: pre;        
               font-family: Consolas;
               overflow-wrap: break-word;
+              width: 100%;
          }
         .copy-btn {
-            float: right;
-            margin: 3px 12px 0px 50px;
-            background-color: #EC317F;
-            color: white;
-            border: none;
-            top: -2px;
-            font-size : 15px;
-            padding: 10px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
-        }
+              float: right;
+              margin: 3px 12px 0px 50px;
+              background-color: transparent;
+              color: #555; 
+              border: none;
+              top: -2px;
+              font-size : 15px;
+              padding: 10px 12px;
+              border-radius: 4px;
+              cursor: pointer; }
         .copy-btn:hover {
-              background-color: #b42a68;
+            background-color: #f0f0f0; 
+            color: #000; 
         }
+       .copy-btn .icon-check {
+            display: none;
+       }
+       .copy-btn.copied .icon-check {
+            display: inline-block;
+       }
+       .copy-btn.copied .icon-copy {
+            display: none;
+       }
        .return-btn {
             display: block;
             width: 220px;
@@ -592,15 +653,40 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
     /// </summary>
-    public static string WriteIndexSummary(string sourceConnectionString, string destinationConnectionString, string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null)
+    public static string WriteIndexSummary(DbServer source, DbServer destination,string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null, int? procCount = 0, int? viewCount = 0 , int? tableCount = 0)
     {
         // Extract server and database names from connection strings
-        var sourceBuilder = new SqlConnectionStringBuilder(sourceConnectionString);
-        var destinationBuilder = new SqlConnectionStringBuilder(destinationConnectionString);
+        var sourceBuilder = new SqlConnectionStringBuilder(source.connectionString);
+        var destinationBuilder = new SqlConnectionStringBuilder(destination.connectionString);
+
         string sourceServer = sourceBuilder.DataSource;
         string destinationServer = destinationBuilder.DataSource;
+
         string sourceDatabase = sourceBuilder.InitialCatalog;
         string destinationDatabase = destinationBuilder.InitialCatalog;
+
+
+
+
+        string connectionsTable = $@"
+<table class=""conn"">
+  <tr>
+    <th>Connection</th>
+    <th>Server</th>
+    <th>Database</th>
+  </tr>
+  <tr>
+    <td>{source.name}</td>
+    <td>{sourceServer}</td>
+    <td>{sourceDatabase}</td>
+  </tr>
+  <tr>
+    <td>{destination.name}</td>
+    <td>{destinationServer}</td>
+    <td>{destinationDatabase}</td>
+  </tr>
+</table>";
+
 
         StringBuilder html = new StringBuilder();
         DateTime date = DateTime.UtcNow; ;
@@ -609,14 +695,33 @@ public static class HtmlReportWriter
         double minutes = Duration / 60000.0;
         string formattedDuration = $"{minutes:F1} minutes";
 
-        // Create links to individual index pages
-        string procsIndex = procIndexPath == null ? "" : $@"<a href=""{procIndexPath}"" class=""btn"">Procedures</a>";
-        string viewsIndex = viewIndexPath == null ? "" : $@"<a href=""{viewIndexPath}"" class=""btn"">Views</a>";
-        string tablesIndex = tableIndexPath == null ? "" : $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>";
-        string ignoredIndex = ignoredIndexPath == null ? "" : $@"<a href=""{ignoredIndexPath}"" class=""btn"">Ignored</a>";
+        static bool Show(string? path, int count) =>
+            !string.IsNullOrWhiteSpace(path) && (count > 0);
+
+        string procsIndex = Show(procIndexPath, procCount.Value)
+            ? $@"<a href=""{procIndexPath}""  class=""btn"">Procedures</a>" : "";
+
+        string viewsIndex = Show(viewIndexPath, viewCount.Value)
+            ? $@"<a href=""{viewIndexPath}""  class=""btn"">Views</a>" : "";
+
+        string tablesIndex = Show(tableIndexPath, tableCount.Value)
+            ? $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>" : "";
+
+        string ignoredIndex = string.IsNullOrWhiteSpace(ignoredIndexPath)
+            ? ""
+            : $@"<a href=""{ignoredIndexPath}"" class=""btn"">Ignored</a>";
 
         // Replace placeholders in the index template
-        html.Append(IndexTemplate.Replace("{sourceServer}", sourceServer).Replace("{sourceDatabase}", sourceDatabase).Replace("{destinationServer}", destinationServer).Replace("{destinationDatabase}", destinationDatabase).Replace("{procsIndex}", procsIndex).Replace("{viewsIndex}", viewsIndex).Replace("{tablesIndex}", tablesIndex).Replace("{ignoredIndex}", ignoredIndex).Replace("{Date}", Date).Replace("{Duration}", formattedDuration));
+        html.Append(
+            IndexTemplate
+              .Replace("{connectionsTable}", connectionsTable)
+              .Replace("{procsIndex}", procsIndex)
+              .Replace("{viewsIndex}", viewsIndex)
+              .Replace("{tablesIndex}", tablesIndex)
+              .Replace("{ignoredIndex}", ignoredIndex)
+              .Replace("{Date}", Date)
+              .Replace("{Duration}", formattedDuration)
+        );
         string indexPath = Path.Combine(outputPath, "index.html");
 
         // Write to index.html
@@ -629,19 +734,19 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes a detailed summary report comparing objects (procedures, views, tables) between source and destination.
     /// </summary>
-    public static (string html, string countObjects) WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<dbObjectResult> results, DbObjectFilter filter, Run run, bool isIgnoredEmpty,string ignoredCount)
+    public static (string html, string countObjects) WriteSummaryReport(DbServer sourceServer, DbServer destinationServer, string summaryPath, List<dbObjectResult> results, DbObjectFilter filter, Run run, bool isIgnoredEmpty, string ignoredCount)
     {
         StringBuilder html = new();
         var result = results[0];
         string returnPage = Path.Combine("..", "index.html");
-        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}", BuildNav(run, isIgnoredEmpty,ignoredCount)));
+        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}", BuildNav(run, isIgnoredEmpty, ignoredCount)));
 
         #region 1-Create the new table
         var newObjects = results.Where(r => r.IsDestinationEmpty).ToList();
         if (newObjects.Any())
         {
             StringBuilder newTable = new StringBuilder();
-            newTable.AppendLine($@"<h2 style=""color: #B42A68;"">New {result.Type}s in {sourceServer.name} Database : </h2>
+            newTable.AppendLine($@"<h2 style=""color: #B42A68;"">New {result.Type}s in {sourceServer.name} : </h2>
             <table>
                 <tr>
                     <th></th>
@@ -654,12 +759,14 @@ public static class HtmlReportWriter
             foreach (var item in newObjects)
             {
 
-                string sourceBody = item.Type == "Table" ? PrintTableInfo(item.SourceTableInfo, new List<string>()) : item.SourceBody;
+                string copyPayload = item.Type == "Table"
+                    ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo)
+                    : item.SourceBody;
 
 
                 string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
-                string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">Copy</button><br>
-                       <span class=""copy-target"" style=""display:none;"">{sourceBody}</span>";
+                string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button><br>
+                <span class=""copy-target"" style=""display:none;"">{copyPayload}</span>";
 
                 newTable.Append($@"<tr>
                                 <td>{newCount}</td>
@@ -679,8 +786,8 @@ public static class HtmlReportWriter
                         const text = codeBlock?.innerText.trim();
 
                         navigator.clipboard.writeText(text).then(() => {
-                            button.textContent = 'Copied!';
-                            setTimeout(() => button.textContent = 'Copy', 2000);
+                            button.classList.add('copied'); 
+                            setTimeout(() => button.classList.remove('copied'), 2000); 
                         }).catch(err => {
                             console.error('Copy failed:', err);
                             alert('Failed to copy!');
@@ -689,7 +796,7 @@ public static class HtmlReportWriter
                 </script>"
             );
             html.Replace("{NewTable}", newTable.ToString());
-     
+
         }
         else
         {
@@ -703,24 +810,24 @@ public static class HtmlReportWriter
         html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s :</h2>");
         foreach (var item in existingObjects)
         {
-                html.Replace("{differences}", "<th>Changes</th>");
-                // Prepare file links
-                string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
-                string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>" : "—";
-                string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
-                string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
+            html.Replace("{differences}", "<th>Changes</th>");
+            // Prepare file links
+            string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>" : "—";
+            string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>" : "—";
+            string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
+            string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
-                if ((item.IsEqual && filter == DbObjectFilter.ShowUnchanged) || !item.IsEqual)
-                {
-                    html.Append($@"<tr>
+            if ((item.IsEqual && filter == DbObjectFilter.ShowUnchanged) || !item.IsEqual)
+            {
+                html.Append($@"<tr>
                     <td>{Number}</td>
                     <td>{item.schema}.{item.Name}</td>
                     <td>{sourceColumn}</td>
                     <td>{destinationColumn}</td>
                     <td>{differencesColumn}</td>
                      </tr>");
-                    Number++;
-                }
+                Number++;
+            }
         }
         html.Append($@"</table>
                        <br>
@@ -752,7 +859,7 @@ public static class HtmlReportWriter
         StringBuilder html = new();
         string returnPage = Path.Combine("..", "index.html");
         string ignoredCount = ignoredObjects.Count().ToString();
-        html.Append(IgnoredTemplate.Replace("{nav}", BuildNav(run, false,ignoredCount)));
+        html.Append(IgnoredTemplate.Replace("{nav}", BuildNav(run, false, ignoredCount)));
 
         #region Create the Ignored Table
         int Number = 1;
@@ -785,40 +892,44 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the HTML page showing the body of a single procedure/view/table, with copy functionality.
     /// </summary>
-    public static void WriteBodyHtml(string filePath, string title, string body, string returnPage)
+    public static void WriteBodyHtml(string filePath, string title, string body, string returnPage, string ? createTableScript=null)
     {
         StringBuilder html = new StringBuilder();
         html.AppendLine(BodyTemplate.Replace("{title}", title));
         string coloredCode = HighlightSql(body);
+        string toCopy = coloredCode;
         //string escapedBody = EscapeHtml(body);
 
         if (title.Contains("Table"))
         {
             coloredCode = body;
+            toCopy = createTableScript;
         }
 
 
         html.AppendLine($@"<body>
-        <h1>{title}</h1>
-            <div>
-            <span class=""use"">Use {title}</span> <button class='copy-btn' onclick='copyPane(this)'>Copy</button><br>
-            <span class=""copy-target"">{coloredCode}</span>
-            </div>
-            
+        <h1>{title}</h1>
+            <div>
+            <span class=""use"">Use {title}</span> 
+            <button class='copy-btn' onclick='copyPane(this)'>{CopyIcon}{CheckIcon}</button>
+            {coloredCode}
+            <span class=""copy-target"" style=""display:none;"">{toCopy}</span> 
+            </div>
+
             <script>
                 function copyPane(button) {{
-                    const container = button.closest('div');
-                    const codeBlock = container.querySelector('.copy-target');
-                    const text = codeBlock?.innerText.trim();
-            
-                    navigator.clipboard.writeText(text).then(() => {{
-                        button.textContent = 'Copied!';
-                        setTimeout(() => button.textContent = 'Copy', 2000);
-                    }}).catch(err => {{
-                        console.error('Copy failed:', err);
-                        alert('Failed to copy!');
-                    }});
-                }}
+                    const bodyContainer = button.closest('body'); 
+                    const codeBlock = bodyContainer.querySelector('.copy-target'); 
+                    const text = codeBlock?.innerText.trim();
+
+                    navigator.clipboard.writeText(text).then(() => {{
+                        button.classList.add('copied');
+                        setTimeout(() => button.classList.remove('copied'), 2000);
+                    }}).catch(err => {{
+                        console.error('Copy failed:', err);
+                        alert('Failed to copy!');
+                    }});
+                }}
             </script>
             <a href=""{returnPage}"" class=""return-btn"">Return to Summary</a>
             </body>
@@ -836,8 +947,8 @@ public static class HtmlReportWriter
         var differ = new Differ();
         string normalizedSourceBody = Normalize(sourceBody);
         string normalizedDestinationBody = Normalize(destinationBody);
-        string[] sourceBodyColored = HighlightSql(normalizedSourceBody).Split("\n");
-        string[] destinationBodyColored = HighlightSql(normalizedDestinationBody).Split("\n");
+        string[] sourceBodyColored = NoBlanks(HighlightSql(normalizedSourceBody));
+        string[] destinationBodyColored = NoBlanks(HighlightSql(normalizedDestinationBody));
         var sideBySideBuilder = new SideBySideDiffBuilder(differ);
         var model = sideBySideBuilder.BuildDiffModel(string.Join("\n", destinationBodyColored), string.Join("\n", sourceBodyColored));
 
@@ -848,7 +959,7 @@ public static class HtmlReportWriter
         html.AppendLine(@$"<h1>{Name}</h1>
                         <div class='diff-wrapper'>
                         <div class='pane'>
-                        <button class='copy-btn' data-target='left'>Copy</button>
+                        <button class='copy-btn' data-target='left'>{CopyIcon}{CheckIcon}</button>   
                         <h2>{sourceName}</h2>
                         <div class='code-scroll' id='left'><div class='code-block'>
 
@@ -863,7 +974,7 @@ public static class HtmlReportWriter
         // Destination block
         html.Append($@"</div></div></div>
                         <div class='pane'>
-                        <button class='copy-btn' data-target='right'>Copy</button>
+                        <button class='copy-btn' data-target='right'>{CopyIcon}{CheckIcon}</button>                        
                         <h2>{destinationName}</h2>
                         <div class='code-scroll' id='right'><div class='code-block'>
                         ");
@@ -888,8 +999,8 @@ public static class HtmlReportWriter
                                           .map(line => line.textContent)
                                           .join('\n');
                         navigator.clipboard.writeText(text).then(() => {{
-                            button.textContent = 'Copied!';
-                            setTimeout(() => button.textContent = 'Copy', 2000);
+                            button.classList.add('copied'); 
+                            setTimeout(() => button.classList.remove('copied'), 2000); 
                         }});
                     }});
                 }});
@@ -925,13 +1036,27 @@ public static class HtmlReportWriter
                  </html>");
         File.WriteAllText(differencesPath, html.ToString());
 
-        #region local function
+        #region local functions
         string Normalize(string input)
         {
             if (input == null) return null;
 
             // Normalize the input for consistent comparison
             return input.Replace("[", "").Replace("]", "");
+        }
+
+        string[] NoBlanks(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return Array.Empty<string>();
+
+            // Normalize line endings first
+            s = s.Replace("\r\n", "\n");
+
+            // Trim leading blank/whitespace lines so line 1 is real content
+            s = s.TrimStart('\n', '\r', ' ', '\t');
+
+            // Split into lines for DiffPlex rendering
+            return s.Split('\n');
         }
         #endregion
     }
@@ -1064,13 +1189,13 @@ public static class HtmlReportWriter
         html.AppendLine($@"
             </div>
             <a href='{returnPage}' class='return-btn'>Return to Summary</a>
-            <script>
+              <script>
             const blocks = document.querySelectorAll('.code-scroll');
-            function syncScrollY(src, tgt) {{ tgt.scrollTop = src.scrollTop; }}
+            function syncScroll(src, tgt) {{ tgt.scrollTop = src.scrollTop; tgt.scrollLeft = src.scrollLeft; }}
             if (blocks.length === 2) {{
               let isSyncing = false;
-              blocks[0].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScrollY(blocks[0], blocks[1]); isSyncing = false; }});
-              blocks[1].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScrollY(blocks[1], blocks[0]); isSyncing = false; }});
+              blocks[0].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScroll(blocks[0], blocks[1]); isSyncing = false; }});
+              blocks[1].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScroll(blocks[1], blocks[0]); isSyncing = false; }});
             }}
             </script>
             </body>
@@ -1081,6 +1206,63 @@ public static class HtmlReportWriter
     #endregion
 
     #region Helpers
+
+
+    public static string CreateTableScript(string schema, string table, List<tableDto> cols)
+    {
+        if (cols == null || cols.Count == 0)
+            return $"-- Table [{schema}].[{table}] has no columns?";
+
+        string NormalizeLen(string type, string lenStr)
+        {
+            if (string.IsNullOrWhiteSpace(lenStr)) return "";
+            if (!int.TryParse(lenStr, out var len)) return "";
+
+            // nvarchar/nchar length in sys.columns is bytes. Convert to characters.
+            if (type.Equals("nvarchar", StringComparison.OrdinalIgnoreCase) ||
+                type.Equals("nchar", StringComparison.OrdinalIgnoreCase))
+            {
+                if (len == -1) return "(MAX)";
+                return $"({len / 2})";
+            }
+
+            // varchar/char length is bytes already.
+            if (type.Equals("varchar", StringComparison.OrdinalIgnoreCase) ||
+                type.Equals("char", StringComparison.OrdinalIgnoreCase))
+            {
+                if (len == -1) return "(MAX)";
+                return $"({len})";
+            }
+
+            // other types: no (length) suffix
+            return "";
+        }
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"CREATE TABLE [{schema}].[{table}] (");
+
+        for (int i = 0; i < cols.Count; i++)
+        {
+            var c = cols[i];
+            var len = NormalizeLen(c.columnType, c.maxLength);
+            var nullability = (c.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
+            var comma = (i < cols.Count - 1) ? "," : "";
+            sb.AppendLine($"    [{c.columnName}] {c.columnType}{len} {nullability}{comma}");
+        }
+
+        // Add a PK constraint if we have PK columns (single or composite)
+        var pkCols = cols.Where(x => x.isPrimaryKey?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true)
+                         .Select(x => $"[{x.columnName}]")
+                         .ToList();
+        if (pkCols.Any())
+        {
+            sb.AppendLine($",   CONSTRAINT [PK_{table}] PRIMARY KEY ({string.Join(", ", pkCols)})");
+        }
+
+        sb.AppendLine(");");
+        return sb.ToString();
+    }
+
     /// <summary>
     /// Maps DiffPlex line change types to CSS class names.
     /// </summary>
@@ -1109,7 +1291,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Write the nav section in the comparison summary pages
     /// </summary>
-    static string BuildNav(Run run, bool isIgnoredEmpty,string count)
+    static string BuildNav(Run run, bool isIgnoredEmpty, string count)
     {
         string proceduresPath = "../Procedures/index.html";
         string viewsPath = "../Views/index.html";
