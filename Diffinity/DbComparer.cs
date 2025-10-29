@@ -231,8 +231,8 @@ public class DbComparer : DbObjectHandler
             results.Add(new dbObjectResult
             {
                 Type = "Proc",
-                Name = proc,
-                schema = schema,
+                Name = safeName,
+                schema = safeSchema,
                 IsDestinationEmpty = isDestinationEmpty,
                 IsEqual = areEqual,
                 SourceBody = isDestinationEmpty ? sourceBody : null,
@@ -346,8 +346,8 @@ public class DbComparer : DbObjectHandler
             results.Add(new dbObjectResult
             {
                 Type = "View",
-                Name = view,
-                schema = schema,
+                Name = safeName,
+                schema = safeSchema,
                 IsDestinationEmpty = isDestinationEmpty,
                 IsEqual = areEqual,
                 SourceBody = isDestinationEmpty ? sourceBody : null,
@@ -551,6 +551,7 @@ public class DbComparer : DbObjectHandler
         {
             name = name.Replace(c, '_');
         }
+        name = '[' + name + ']';
         return name;
     }
     public class summaryReportDto

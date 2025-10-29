@@ -9,29 +9,6 @@ namespace Diffinity;
 
 public class DbObjectHandler
 {
-
-    /// <summary>
-    /// Wraps name in SQL brackets if it's not null or empty
-    /// and ensures it's not double-bracketed.
-    /// </summary>
-    public static string BracketName(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return string.Empty;
-        // Strip any existing brackets
-        string cleanName = name.Trim().TrimStart('[').TrimEnd(']');
-        // Re-wrap with new brackets
-        return $"[{cleanName}]";
-    }
-
-    /// <summary>
-    /// Removes SQL brackets from a name if they exist.
-    /// </summary>
-    public static string RemoveBrackets(string? name)
-    {
-        if (string.IsNullOrWhiteSpace(name)) return string.Empty;
-        return name.Trim().TrimStart('[').TrimEnd(']');
-    }
-
     /// <summary>
     /// DISPLAY-ONLY: Ensures the object name (first declaration line) is bracketed:
     /// e.g. CREATE [schema].[object] or CREATE [object]
@@ -56,8 +33,14 @@ public class DbObjectHandler
                 return $"[{p.Trim('[', ']')}]";
             }
 
-            var parts = name.Split('.');
-            for (int i = 0; i < parts.Length; i++)
+            var parts = name.Split('.').Select(p => p.Trim()).Where(p => p.Length > 0).ToList();
+
+            // If no schema provided, add dbo
+            if (parts.Count == 1)
+                parts.Insert(0, "dbo");
+
+            // Apply bracket formatting
+            for (int i = 0; i < parts.Count; i++)
                 parts[i] = BracketPart(parts[i]);
 
             return $"{head} {string.Join(".", parts)}";
