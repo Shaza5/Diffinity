@@ -243,6 +243,25 @@ public static class HtmlReportWriter
         .return-btn:hover {
             background-color: #b42a68;
         }
+        .copy-selected {
+            float: right;
+            margin: 0px 12px 0px 50px;
+            background-color: #EC317F;
+            color: white;
+            border: none;
+            font-size : 15px;
+            padding: 10px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
+        }
+        .copy-selected:hover {
+              background-color: #b42a68;
+        }
+        .pick { display:inline-flex; align-items:center; }
+        .copy-Section { display:flex; gap:12px; justify-content:flex-end; margin:10px 0 6px 0; }
+        .hdr { display:inline-flex; align-items:center; gap:8px; }
+
           /* Visually dim a completed row */
           .row-done { background-color:#eee !important; }
           .row-done td { background-color:#eee !important; opacity:.6; }
@@ -257,12 +276,13 @@ public static class HtmlReportWriter
     <h1>[{source}] vs [{destination}] </h1>
     {nav}
     {NewTable}
+    {copySection}
 <table>
     <tr>
         <th></th>
         <th>{MetaData} Name</th>
-        <th>{source} Original</th>
-        <th>{destination} Original</th>
+        <th> <label class=""hdr""><input type=""checkbox"" id=""chk-src-all""><span>{source} Original</span></label> </th>
+        <th> <label class=""hdr""><input type=""checkbox"" id=""chk-dst-all""><span>{destination} Original</span></label> </th>
         <th>Changes</th>
         <th class=""done-col""></th>
     </tr>
@@ -846,9 +866,16 @@ public static class HtmlReportWriter
         }
         #endregion
 
+        var existingObjects = results.Where(r => !r.IsDestinationEmpty).ToList();
+        string copySection = existingObjects.Any() ? $@"<div class=""copy-Section"" style=""display:flex;justify-content:flex-end;margin:10px 0 6px 0;"">
+        <button id=""copyAll"" class=""copy-selected"">Copy Selected</button>
+      </div>"
+           : string.Empty;
+        html.Replace("{copySection}", copySection);
+
+
         #region 2-Create the Comparison Table
         int Number = 1;
-        var existingObjects = results.Where(r => !r.IsDestinationEmpty).ToList();
         html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s :</h2>");
         foreach (var item in existingObjects)
         {
@@ -856,14 +883,17 @@ public static class HtmlReportWriter
             string destCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo): item.DestinationBody;
 
             // Prepare file links
-                string sourceColumn = item.SourceFile != null ? $@"<a href=""{item.SourceFile}"">View</a>
-                <button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button>
-                <span class=""copy-target"" style=""display:none;"">{sourceCopy}</span>": "—";
-                string destinationColumn = item.DestinationFile != null ? $@"<a href=""{item.DestinationFile}"">View</a>
-                <button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button>
-                <span class=""copy-target"" style=""display:none;"">{destCopy}</span>": "—";
+            string sourceColumn = item.SourceFile != null ? $@"<label class='pick'>
+    <input type='checkbox' class='sel-src'> <a href=""{item.SourceFile}"">View</a></label>
+    <button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button>
+    <span class=""copy-target copy-src"" style=""display:none;"">{sourceCopy}</span>" : "—";
 
-                string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
+            string destinationColumn = item.DestinationFile != null ? $@"<label class='pick'>
+    <input type='checkbox' class='sel-dst'><a href=""{item.DestinationFile}"">View</a></label>
+    <button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button>
+    <span class=""copy-target copy-dst"" style=""display:none;"">{destCopy}</span>" : "—";
+
+            string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
                 string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
             if ((item.IsEqual && filter == DbObjectFilter.ShowUnchanged) || !item.IsEqual)
@@ -899,9 +929,75 @@ public static class HtmlReportWriter
                             alert('Failed to copy!');
                         });
                      }
-                </script>"
+                </script>
+<script>
+  (function() {
+    // per-column select-all stays the same...
+    const srcAll = document.getElementById('chk-src-all');
+    const dstAll = document.getElementById('chk-dst-all');
+    if (srcAll) {
+      srcAll.addEventListener('change', () => {
+        document.querySelectorAll('.sel-src').forEach(cb => cb.checked = srcAll.checked);
+      });
+    }
+    if (dstAll) {
+      dstAll.addEventListener('change', () => {
+        document.querySelectorAll('.sel-dst').forEach(cb => cb.checked = dstAll.checked);
+      });
+    }
+
+    function getText(el) {
+      // Prefer textContent; trim trailing/leading whitespace
+      return (el && el.textContent ? el.textContent : '').trim();
+    }
+
+    function collectAll() {
+      const rows = Array.from(document.querySelectorAll('table tr')).slice(1); // skip header
+      const parts = [];
+
+      rows.forEach(tr => {
+        const srcCb = tr.querySelector('.sel-src');
+        const dstCb = tr.querySelector('.sel-dst');
+
+        if (srcCb && srcCb.checked) {
+          const span = tr.querySelector('.copy-src');
+          const txt = getText(span);
+          if (txt) parts.push(txt);
+        }
+        if (dstCb && dstCb.checked) {
+          const span = tr.querySelector('.copy-dst');
+          const txt = getText(span);
+          if (txt) parts.push(txt);
+        }
+      });
+
+      // Join with GO batches, only if we actually have parts
+      return parts.length ? parts.join('\nGO\n\n') + '\nGO' : '';
+    }
+
+    const btn = document.getElementById('copyAll');
+    if (btn) {
+      btn.addEventListener('click', () => {
+        const blob = collectAll();
+        if (!blob) {
+          alert('No items selected.');
+          return;
+        }
+        navigator.clipboard.writeText(blob).then(() => {
+          const old = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => btn.textContent = old, 1200);
+        }).catch(err => {
+          console.error('Copy failed:', err);
+          alert('Failed to copy!');
+        });
+      });
+    }
+  })();
+</script>
+"
 );
-        html.Append($@"</table>
+        html.Append($@" </table>
                        <br>
                        <a href=""{returnPage}"" class=""return-btn"">Return to Index</a>
                        </body>
