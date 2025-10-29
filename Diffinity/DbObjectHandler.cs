@@ -56,8 +56,14 @@ public class DbObjectHandler
                 return $"[{p.Trim('[', ']')}]";
             }
 
-            var parts = name.Split('.');
-            for (int i = 0; i < parts.Length; i++)
+            var parts = name.Split('.').Select(p => p.Trim()).Where(p => p.Length > 0).ToList();
+
+            // If no schema provided, add dbo
+            if (parts.Count == 1)
+                parts.Insert(0, "dbo");
+
+            // Apply bracket formatting
+            for (int i = 0; i < parts.Count; i++)
                 parts[i] = BracketPart(parts[i]);
 
             return $"{head} {string.Join(".", parts)}";
