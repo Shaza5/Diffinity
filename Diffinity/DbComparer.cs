@@ -182,15 +182,26 @@ public class DbComparer : DbObjectHandler
         {
             string schema = procTuple.schema;
             string proc = procTuple.name;
+            string safeSchema = MakeSafe(schema);
+            string safeName = MakeSafe(proc);
 
-            if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? proc.StartsWith(ignore[..^2] + ".") : proc == ignore))
+            if (ignoredObjects.Any(ignore =>
+            {
+                var parts = ignore.Split('.');
+                var safeParts = parts
+                    .Select(part => part == "*" ? "*" : MakeSafe(part));
+                var safeIgnore = string.Join(".", safeParts);
+
+                if (ignore.EndsWith(".*"))
+                    return safeIgnore == safeSchema + ".*";
+
+                return safeIgnore == safeSchema + "." + safeName;
+            }))
             {
                 Log.Information($"{schema}.{proc}: Ignored");
                 return;
             }
 
-            string safeSchema = MakeSafe(schema);
-            string safeName = MakeSafe(proc);
             string schemaFolder = Path.Combine(proceduresFolderPath, safeSchema);
 
             // Step 5 - Fetch definitions from both servers
@@ -300,14 +311,25 @@ public class DbComparer : DbObjectHandler
         {
             string schema = viewTuple.schema;
             string view = viewTuple.name;
-            if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? view.StartsWith(ignore[..^2] + ".") : view == ignore))
+            string safeSchema = MakeSafe(schema);
+            string safeName = MakeSafe(view);
+            if (ignoredObjects.Any(ignore =>
+            {
+                var parts = ignore.Split('.');
+                var safeParts = parts
+                    .Select(part => part == "*" ? "*" : MakeSafe(part));
+                var safeIgnore = string.Join(".", safeParts);
+
+                if (ignore.EndsWith(".*"))
+                    return safeIgnore == safeSchema + ".*";
+
+                return safeIgnore == safeSchema + "." + safeName;
+            }))
             {
                 Log.Information($"{schema}.{view}: Ignored");
                 return;
             }
 
-            string safeSchema = MakeSafe(schema);
-            string safeName = MakeSafe(view);
             string schemaFolder = Path.Combine(viewsFolderPath, safeSchema);
 
             // Step 5 - Fetch definitions from both servers
@@ -416,14 +438,25 @@ public class DbComparer : DbObjectHandler
         {
             string schema = tableTuple.schema;
             string table = tableTuple.name;
-
-            if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? table.StartsWith(ignore[..^2] + ".") : table == ignore))
-            {
-                Log.Information($"{table}: Ignored");
-                return;
-            }
             string safeSchema = MakeSafe(schema);
             string safeName = MakeSafe(table);
+
+            if (ignoredObjects.Any(ignore =>
+            {
+                var parts = ignore.Split('.');
+                var safeParts = parts
+                    .Select(part => part == "*" ? "*" : MakeSafe(part));
+                var safeIgnore = string.Join(".", safeParts);
+
+                if (ignore.EndsWith(".*"))
+                    return safeIgnore == safeSchema + ".*";
+
+                return safeIgnore == safeSchema + "." + safeName;
+            }))
+            {
+                Log.Information($"{schema}.{table}: Ignored");
+                return;
+            }
             string schemaFolder = Path.Combine(tablesFolderPath, safeSchema);
 
             // Step 5 - Fetch table column info
@@ -585,15 +618,26 @@ public class DbComparer : DbObjectHandler
             string schema = udt.schema;
             string name = udt.name;
             string full = $"{schema}.{name}";
+            string safeSchema = MakeSafe(schema);
+            string safeName = MakeSafe(name);
 
-            if (ignoredObjects.Any(ignore => ignore.EndsWith(".*") ? full.StartsWith(ignore[..^2] + ".") : full == ignore))
+            if (ignoredObjects.Any(ignore =>
             {
-                Log.Information($"{full}: Ignored");
+                var parts = ignore.Split('.');
+                var safeParts = parts
+                    .Select(part => part == "*" ? "*" : MakeSafe(part));
+                var safeIgnore = string.Join(".", safeParts);
+
+                if (ignore.EndsWith(".*"))
+                    return safeIgnore == safeSchema + ".*";
+
+                return safeIgnore == safeSchema + "." + safeName;
+            }))
+            {
+                Log.Information($"{schema}.{name}: Ignored");
                 return;
             }
 
-            string safeSchema = MakeSafe(schema);
-            string safeName = MakeSafe(name);
             string schemaFolder = Path.Combine(udtsFolderPath, safeSchema);
 
             // 5) Script UDTs on both servers
