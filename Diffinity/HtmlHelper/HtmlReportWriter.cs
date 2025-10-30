@@ -117,6 +117,7 @@ public static class HtmlReportWriter
         <li>{procsIndex}</li>
         <li>{viewsIndex}</li>
         <li>{tablesIndex}</li>
+        <li>{udtsIndex}</li>
         <li>{ignoredIndex}</li>
     </ul>
 </body>
@@ -682,7 +683,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
     /// </summary>
-    public static string WriteIndexSummary(DbServer source, DbServer destination,string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null, int? procCount = 0, int? viewCount = 0 , int? tableCount = 0, string? procsCountText = null, string? viewsCountText = null, string? tablesCountText = null)
+    public static string WriteIndexSummary(DbServer source, DbServer destination,string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null, string? udtIndexPath = null, int? procCount = 0, int? viewCount = 0 , int? tableCount = 0, int? udtCount = 0, string? procsCountText = null, string? viewsCountText = null, string? tablesCountText = null, string? udtsCountText = null)
     {
         // Extract server and database names from connection strings
         var sourceBuilder = new SqlConnectionStringBuilder(source.connectionString);
@@ -736,6 +737,10 @@ public static class HtmlReportWriter
         string tablesIndex = Show(tableIndexPath, tableCount.Value)
             ? $@"<a href=""{tableIndexPath}"" class=""btn"">Tables {tablesCountText}</a>" : "";
 
+        string udtsIndex = Show(udtIndexPath, udtCount.Value)
+            ? $@"<a href=""{udtIndexPath}"" class=""btn"">Udts {udtsCountText}</a>" : "";
+
+
         string ignoredIndex = string.IsNullOrWhiteSpace(ignoredIndexPath)
             ? ""
             : $@"<a href=""{ignoredIndexPath}"" class=""btn"">Ignored</a>";
@@ -747,6 +752,7 @@ public static class HtmlReportWriter
               .Replace("{procsIndex}", procsIndex)
               .Replace("{viewsIndex}", viewsIndex)
               .Replace("{tablesIndex}", tablesIndex)
+              .Replace("{udtsIndex}", udtsIndex)
               .Replace("{ignoredIndex}", ignoredIndex)
               .Replace("{Date}", Date)
               .Replace("{Duration}", formattedDuration)
@@ -1460,6 +1466,7 @@ public static class HtmlReportWriter
         string proceduresPath = "../Procedures/index.html";
         string viewsPath = "../Views/index.html";
         string tablesPath = "../Tables/index.html";
+        string udtsPath = "../UDTs/index.html";
         string ignoredPath = "../Ignored/index.html";
         var sb = new StringBuilder();
         sb.AppendLine(@"<nav class=""top-nav"">");
@@ -1473,6 +1480,9 @@ public static class HtmlReportWriter
                 break;
             case Run.Table:
                 sb.AppendLine($@"  <a href=""{tablesPath}"">Tables {{tablesCount}}</a>");
+                break;
+            case Run.Udt:
+                sb.AppendLine($@"  <a href=""{udtsPath}"">Udts {{udtsCount}}</a>");
                 break;
             case Run.ProcView:
                 sb.AppendLine($@"  <a href=""{proceduresPath}"">Procedures {{procsCount}}</a>");
@@ -1491,6 +1501,7 @@ public static class HtmlReportWriter
                 sb.AppendLine($@"  <a href=""{proceduresPath}"">Procedures {{procsCount}}</a>");
                 sb.AppendLine($@"  <a href=""{viewsPath}"">Views {{viewsCount}}</a>");
                 sb.AppendLine($@"  <a href=""{tablesPath}"">Tables {{tablesCount}}</a>");
+                sb.AppendLine($@"  <a href=""{udtsPath}"">Udts {{udtsCount}}</a>");
                 break;
 
             default:
