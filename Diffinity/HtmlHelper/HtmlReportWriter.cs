@@ -112,7 +112,7 @@ public static class HtmlReportWriter
     {connectionsTable}
     <h3>{Date}</h3>
     <h3>{Duration}</h3>
-    <div class=""legend"">Counts are (changed / new / unchanged)</div>
+    <div class=""legend"">Counts are (new / changed / unchanged)</div>
     <ul>
         <li>{procsIndex}</li>
         <li>{viewsIndex}</li>
@@ -806,10 +806,11 @@ public static class HtmlReportWriter
 
         #region 1-Create the new table
         var newObjects = results.Where(r => r.IsDestinationEmpty).ToList();
+        int newObjectsCount = newObjects.Count();
         if (newObjects.Any())
         {
             StringBuilder newTable = new StringBuilder();
-            newTable.AppendLine($@"<h2 style=""color: #B42A68;"">New {result.Type}s in {sourceServer.name} : </h2>
+            newTable.AppendLine($@"<h2 style=""color: #B42A68;"">New {result.Type}s in {sourceServer.name} ({newObjectsCount}) : </h2>
             <table>
                 <tr>
                     <th></th>
@@ -1017,7 +1018,6 @@ public static class HtmlReportWriter
         #endregion
 
         #region 3-Update counts in the nav bar
-        int newObjectsCount = newObjects.Count();
         int notEqualCount = existingObjects.Count(r => !r.IsEqual);
         int equalCount = existingObjects.Count(r => r.IsEqual);
         string countObjects = filter == DbObjectFilter.ShowUnchanged ? $"({newObjectsCount}/{notEqualCount}/{equalCount})" : $"({newObjectsCount}/{notEqualCount})";
