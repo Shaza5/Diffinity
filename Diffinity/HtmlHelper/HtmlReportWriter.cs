@@ -104,7 +104,7 @@ public static class HtmlReportWriter
         table.conn td {
             color: #333;               
         }
-
+        .legend { text-align:center; color:#666; margin:14px 0 18px 0; }
     </style>
 </head>
 <body>
@@ -112,7 +112,7 @@ public static class HtmlReportWriter
     {connectionsTable}
     <h3>{Date}</h3>
     <h3>{Duration}</h3>
-
+    <div class=""legend"">Counts are (changed / new / unchanged)</div>
     <ul>
         <li>{procsIndex}</li>
         <li>{viewsIndex}</li>
@@ -203,13 +203,12 @@ public static class HtmlReportWriter
             transform: scaleX(1);
         }
         .copy-btn {
-            float: right;
-            margin: 0px 12px 0px 50px;
+            margin: 0px 0px 0px 8px;
             background-color: transparent;
             color: #555; 
             border: none;
             font-size : 15px;
-            padding: 10px 12px;
+            padding: 6px 8px;
             border-radius: 4px;
             cursor: pointer; }
        .copy-btn:hover {
@@ -258,7 +257,9 @@ public static class HtmlReportWriter
         .copy-selected:hover {
               background-color: #b42a68;
         }
-        .pick { display:inline-flex; align-items:center; }
+        .pick { display:inline-flex; align-items:center; gap:8px; font-size:1rem; }
+        .pick a { font-size:1rem; }           /* ensure same size as lone <a> */
+        .pick input { margin-right:4px; }      /* tiny space before “View” */
         .copy-Section { display:flex; gap:12px; justify-content:flex-end; margin:10px 0 6px 0; }
         .hdr { display:inline-flex; align-items:center; gap:8px; }
 
@@ -681,7 +682,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
     /// </summary>
-    public static string WriteIndexSummary(DbServer source, DbServer destination,string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null, int? procCount = 0, int? viewCount = 0 , int? tableCount = 0)
+    public static string WriteIndexSummary(DbServer source, DbServer destination,string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null, int? procCount = 0, int? viewCount = 0 , int? tableCount = 0, string? procsCountText = null, string? viewsCountText = null, string? tablesCountText = null)
     {
         // Extract server and database names from connection strings
         var sourceBuilder = new SqlConnectionStringBuilder(source.connectionString);
@@ -727,13 +728,13 @@ public static class HtmlReportWriter
             !string.IsNullOrWhiteSpace(path) && (count > 0);
 
         string procsIndex = Show(procIndexPath, procCount.Value)
-            ? $@"<a href=""{procIndexPath}""  class=""btn"">Procedures</a>" : "";
+            ? $@"<a href=""{procIndexPath}""  class=""btn"">Procedures {procsCountText}</a>" : "";
 
         string viewsIndex = Show(viewIndexPath, viewCount.Value)
-            ? $@"<a href=""{viewIndexPath}""  class=""btn"">Views</a>" : "";
+            ? $@"<a href=""{viewIndexPath}""  class=""btn"">Views {viewsCountText}</a>" : "";
 
         string tablesIndex = Show(tableIndexPath, tableCount.Value)
-            ? $@"<a href=""{tableIndexPath}"" class=""btn"">Tables</a>" : "";
+            ? $@"<a href=""{tableIndexPath}"" class=""btn"">Tables {tablesCountText}</a>" : "";
 
         string ignoredIndex = string.IsNullOrWhiteSpace(ignoredIndexPath)
             ? ""
@@ -749,6 +750,7 @@ public static class HtmlReportWriter
               .Replace("{ignoredIndex}", ignoredIndex)
               .Replace("{Date}", Date)
               .Replace("{Duration}", formattedDuration)
+
         );
         string indexPath = Path.Combine(outputPath, "index.html");
 
@@ -880,7 +882,7 @@ public static class HtmlReportWriter
         foreach (var item in existingObjects)
         {
             string sourceCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo): item.SourceBody;
-            string destCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo): item.DestinationBody;
+            string destCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.DestinationTableInfo): item.DestinationBody;
 
             // Prepare file links
             string sourceColumn = item.SourceFile != null ? $@"<label class='pick'>
@@ -915,87 +917,88 @@ public static class HtmlReportWriter
 
         }
         html.AppendLine(
-    @"<script>
-                    function copyPane(button) {
-                        const container = button.closest('tr');
-                        const codeBlock = container.querySelector('.copy-target');
-                        const text = codeBlock?.innerText.trim();
-
-                        navigator.clipboard.writeText(text).then(() => {
-                            button.classList.add('copied'); 
-                            setTimeout(() => button.classList.remove('copied'), 2000); 
-                        }).catch(err => {
-                            console.error('Copy failed:', err);
-                            alert('Failed to copy!');
-                        });
-                     }
-                </script>
-<script>
-  (function() {
-    // per-column select-all stays the same...
-    const srcAll = document.getElementById('chk-src-all');
-    const dstAll = document.getElementById('chk-dst-all');
-    if (srcAll) {
-      srcAll.addEventListener('change', () => {
-        document.querySelectorAll('.sel-src').forEach(cb => cb.checked = srcAll.checked);
-      });
-    }
-    if (dstAll) {
-      dstAll.addEventListener('change', () => {
-        document.querySelectorAll('.sel-dst').forEach(cb => cb.checked = dstAll.checked);
-      });
-    }
-
-    function getText(el) {
-      // Prefer textContent; trim trailing/leading whitespace
-      return (el && el.textContent ? el.textContent : '').trim();
-    }
-
-    function collectAll() {
-      const rows = Array.from(document.querySelectorAll('table tr')).slice(1); // skip header
-      const parts = [];
-
-      rows.forEach(tr => {
-        const srcCb = tr.querySelector('.sel-src');
-        const dstCb = tr.querySelector('.sel-dst');
-
-        if (srcCb && srcCb.checked) {
-          const span = tr.querySelector('.copy-src');
-          const txt = getText(span);
-          if (txt) parts.push(txt);
+        @"<script>
+        function copyPane(button) {
+          const codeBlock = button.parentElement.querySelector('.copy-target');
+          const text = codeBlock?.innerText.trim();
+          if (!text) {
+            alert('Nothing to copy!');
+            return;
+          }
+          navigator.clipboard.writeText(text).then(() => {
+            button.classList.add('copied');
+            setTimeout(() => button.classList.remove('copied'), 2000);
+          }).catch(err => {
+            console.error('Copy failed:', err);
+            alert('Failed to copy!');
+          });
         }
-        if (dstCb && dstCb.checked) {
-          const span = tr.querySelector('.copy-dst');
-          const txt = getText(span);
-          if (txt) parts.push(txt);
-        }
-      });
+        </script>
+        <script>
+          (function() {
+            // per-column select-all stays the same...
+            const srcAll = document.getElementById('chk-src-all');
+            const dstAll = document.getElementById('chk-dst-all');
+            if (srcAll) {
+              srcAll.addEventListener('change', () => {
+                document.querySelectorAll('.sel-src').forEach(cb => cb.checked = srcAll.checked);
+              });
+            }
+            if (dstAll) {
+              dstAll.addEventListener('change', () => {
+                document.querySelectorAll('.sel-dst').forEach(cb => cb.checked = dstAll.checked);
+              });
+            }
 
-      // Join with GO batches, only if we actually have parts
-      return parts.length ? parts.join('\nGO\n\n') + '\nGO' : '';
-    }
+            function getText(el) {
+              // Prefer textContent; trim trailing/leading whitespace
+              return (el && el.textContent ? el.textContent : '').trim();
+            }
 
-    const btn = document.getElementById('copyAll');
-    if (btn) {
-      btn.addEventListener('click', () => {
-        const blob = collectAll();
-        if (!blob) {
-          alert('No items selected.');
-          return;
-        }
-        navigator.clipboard.writeText(blob).then(() => {
-          const old = btn.textContent;
-          btn.textContent = 'Copied!';
-          setTimeout(() => btn.textContent = old, 1200);
-        }).catch(err => {
-          console.error('Copy failed:', err);
-          alert('Failed to copy!');
-        });
-      });
-    }
-  })();
-</script>
-"
+            function collectAll() {
+              const rows = Array.from(document.querySelectorAll('table tr')).slice(1); // skip header
+              const parts = [];
+
+              rows.forEach(tr => {
+                const srcCb = tr.querySelector('.sel-src');
+                const dstCb = tr.querySelector('.sel-dst');
+
+                if (srcCb && srcCb.checked) {
+                  const span = tr.querySelector('.copy-src');
+                  const txt = getText(span);
+                  if (txt) parts.push(txt);
+                }
+                if (dstCb && dstCb.checked) {
+                  const span = tr.querySelector('.copy-dst');
+                  const txt = getText(span);
+                  if (txt) parts.push(txt);
+                }
+              });
+
+              // Join with GO batches, only if we actually have parts
+              return parts.length ? parts.join('\nGO\n\n') + '\nGO' : '';
+            }
+
+            const btn = document.getElementById('copyAll');
+            if (btn) {
+              btn.addEventListener('click', () => {
+                const blob = collectAll();
+                if (!blob) {
+                  alert('No items selected.');
+                  return;
+                }
+                navigator.clipboard.writeText(blob).then(() => {
+                  const old = btn.textContent;
+                  btn.textContent = 'Copied!';
+                  setTimeout(() => btn.textContent = old, 1200);
+                }).catch(err => {
+                  console.error('Copy failed:', err);
+                  alert('Failed to copy!');
+                });
+              });
+            }
+          })();
+        </script>"
 );
         html.Append($@" </table>
                        <br>
