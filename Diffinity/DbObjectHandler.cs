@@ -3,11 +3,73 @@ using Diffinity.TableHelper;
 using Microsoft.Data.SqlClient;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace Diffinity;
 
 public class DbObjectHandler
 {
+
+    /// <summary>
+    /// Wraps name in SQL brackets if it's not null or empty
+    /// and ensures it's not double-bracketed.
+    /// </summary>
+    public static string BracketName(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+        // Strip any existing brackets
+        string cleanName = name.Trim().TrimStart('[').TrimEnd(']');
+        // Re-wrap with new brackets
+        return $"[{cleanName}]";
+    }
+
+    /// <summary>
+    /// Removes SQL brackets from a name if they exist.
+    /// </summary>
+    public static string RemoveBrackets(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return string.Empty;
+        return name.Trim().TrimStart('[').TrimEnd(']');
+    }
+
+    /// <summary>
+    /// DISPLAY-ONLY: Ensures the object name (first declaration line) is bracketed:
+    /// e.g. CREATE [schema].[object] or CREATE [object]
+    /// Works with CREATE or CREATE OR ALTER, and supports PROC/PROCEDURE, VIEW, FUNCTION, TRIGGER, TYPE.
+    /// Touches only the first declaration line.
+    /// </summary>
+    public static string BracketObjectNameOnly(string sql)
+    {
+        if (string.IsNullOrWhiteSpace(sql)) return sql;
+
+        // Match CREATE [OR ALTER] <OBJECT-TYPE> <name>  where object-type is PROC/PROCEDURE/VIEW/...
+        var re = new Regex(@"(?is)\b(CREATE\s+(?:OR\s+ALTER\s+)?(?:PROC(?:EDURE)?|VIEW|FUNCTION|TRIGGER|TYPE))\s+([^\s(]+)");
+        return re.Replace(sql, m =>
+        {
+            var head = m.Groups[1].Value;   // e.g., "CREATE OR ALTER PROC" or "CREATE VIEW"
+            var name = m.Groups[2].Value;   // e.g., "dbo.MyView" or "[dbo].[MyProc]" or "MyProc"
+
+            string BracketPart(string p)
+            {
+                p = p.Trim();
+                if (p.StartsWith("[") && p.EndsWith("]")) return p;
+                return $"[{p.Trim('[', ']')}]";
+            }
+
+            var parts = name.Split('.').Select(p => p.Trim()).Where(p => p.Length > 0).ToList();
+
+            // If no schema provided, add dbo
+            if (parts.Count == 1)
+                parts.Insert(0, "dbo");
+
+            // Apply bracket formatting
+            for (int i = 0; i < parts.Count; i++)
+                parts[i] = BracketPart(parts[i]);
+
+            return $"{head} {string.Join(".", parts)}";
+        }, 1);
+    }
+
     public static bool AreBodiesEqual(string body1, string body2)
     {
         /// <summary>
@@ -107,6 +169,8 @@ public class DbObjectHandler
         public string DestinationFile { get; set; }
         public string? DifferencesFile { get; set; }
         public string? SourceBody { get; set; }
+        public string? DestinationBody { get; set; }
+
         public List<tableDto> SourceTableInfo { get; set; }
         public List<tableDto> DestinationTableInfo { get; set; }
         public string? NewFile { get; set; } // null if not altered
