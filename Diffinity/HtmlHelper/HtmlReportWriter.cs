@@ -10,7 +10,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.RegularExpressions;
 using static Diffinity.DbObjectHandler;
-using System.Net; 
+using System.Net;
 
 
 
@@ -278,6 +278,7 @@ public static class HtmlReportWriter
     <h1>[{source}] vs [{destination}] </h1>
     {nav}
     {NewTable}
+    {UnchangedTable}
     {copySection}
 <table>
     <tr>
@@ -683,7 +684,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
     /// </summary>
-    public static string WriteIndexSummary(DbServer source, DbServer destination,string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null, string? udtIndexPath = null, int? procCount = 0, int? viewCount = 0 , int? tableCount = 0, int? udtCount = 0, string? procsCountText = null, string? viewsCountText = null, string? tablesCountText = null, string? udtsCountText = null)
+    public static string WriteIndexSummary(DbServer source, DbServer destination, string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null, string? udtIndexPath = null, int? procCount = 0, int? viewCount = 0, int? tableCount = 0, int? udtCount = 0, string? procsCountText = null, string? viewsCountText = null, string? tablesCountText = null, string? udtsCountText = null)
     {
         // Extract server and database names from connection strings
         var sourceBuilder = new SqlConnectionStringBuilder(source.connectionString);
@@ -775,7 +776,7 @@ public static class HtmlReportWriter
         StringBuilder html = new();
         var result = results[0];
         string returnPage = Path.Combine("..", "index.html");
-        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}", BuildNav(run, isIgnoredEmpty,ignoredCount)));
+        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}", BuildNav(run, isIgnoredEmpty, ignoredCount)));
         html.AppendLine(@"
         <script>
           const STORE = sessionStorage; 
@@ -874,6 +875,80 @@ public static class HtmlReportWriter
         }
         #endregion
 
+        #region 2-Create the Unchanged Objects Table
+        var unchangedObjects = results.Where(r => r.IsEqual && filter == DbObjectFilter.ShowUnchanged).ToList();
+        if (unchangedObjects.Any())
+        {
+            StringBuilder unchangedTable = new StringBuilder();
+            unchangedTable.AppendLine($@"<h2 style=""color: #B42A68;"">Unchanged {result.Type}s : </h2>
+            <table>
+                <tr>
+                    <th></th>
+                    <th>{result.Type} Name</th>
+                    <th></th>
+                    <th></th>
+                    <th class=""done-col""></th>
+                </tr>");
+
+            int newCount = 1;
+            foreach (var item in unchangedObjects)
+            {
+
+                string copyPayload = item.Type == "Table"
+                    ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo)
+                    : item.SourceBody;
+
+
+                string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
+                string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button><br>
+                <span class=""copy-target"" style=""display:none;"">{copyPayload}</span>";
+
+                unchangedTable.Append($@"<tr data-key=""Unchanged|{result.Type}|{item.schema}.{item.Name}"">
+                                <td>{newCount}</td>
+                                <td>{item.schema}.{item.Name}</td>
+                                <td>{sourceLink}</td>
+                                <td>{copyButton}</td>
+                                <td class=""done-col"">
+                                    <input type=""checkbox""
+                                           class=""mark-done""
+                                           onchange=""toggleRow(this)""
+                                           data-key=""Unchanged|{result.Type}|{item.schema}.{item.Name}"">
+                                </td>
+                                </tr>");
+                newCount++;
+            }
+
+            unchangedTable.Append("</table><br><br>");
+            unchangedTable.AppendLine(
+                @"<script>
+                    function copyPane(button) {
+                        const container = button.closest('tr');
+                        const codeBlock = container.querySelector('.copy-target');
+                        const text = codeBlock?.innerText.trim();
+
+                        navigator.clipboard.writeText(text).then(() => {
+                            button.classList.add('copied'); 
+                            setTimeout(() => button.classList.remove('copied'), 2000); 
+                        }).catch(err => {
+                            console.error('Copy failed:', err);
+                            alert('Failed to copy!');
+                        });
+                     }
+                </script>"
+            );
+            html.Replace("{UnchangedTable}", unchangedTable.ToString());
+
+        }
+        else
+        {
+            html.Replace("{UnchangedTable}", "");
+        }
+
+
+        #endregion
+
+
+
         var existingObjects = results.Where(r => !r.IsDestinationEmpty).ToList();
         string copySection = existingObjects.Any() ? $@"<div class=""copy-Section"" style=""display:flex;justify-content:flex-end;margin:10px 0 6px 0;"">
         <button id=""copyAll"" class=""copy-selected"">Copy Selected</button>
@@ -882,13 +957,13 @@ public static class HtmlReportWriter
         html.Replace("{copySection}", copySection);
 
 
-        #region 2-Create the Comparison Table
+        #region 3-Create the Chnaged Objects Table
         int Number = 1;
         html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s :</h2>");
         foreach (var item in existingObjects)
         {
-            string sourceCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo): item.SourceBody;
-            string destCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.DestinationTableInfo): item.DestinationBody;
+            string sourceCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo) : item.SourceBody;
+            string destCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.DestinationTableInfo) : item.DestinationBody;
 
             // Prepare file links
             string sourceColumn = item.SourceFile != null ? $@"<label class='pick'>
@@ -902,9 +977,9 @@ public static class HtmlReportWriter
     <span class=""copy-target copy-dst"" style=""display:none;"">{destCopy}</span>" : "—";
 
             string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
-                string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
+            string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
-            if ((item.IsEqual && filter == DbObjectFilter.ShowUnchanged) || !item.IsEqual)
+            if (!item.IsEqual)
             {
                 html.Append($@"<tr data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
                 <td>{Number}</td>
@@ -1016,7 +1091,7 @@ public static class HtmlReportWriter
 
         #endregion
 
-        #region 3-Update counts in the nav bar
+        #region 4-Update counts in the nav bar
         int newObjectsCount = newObjects.Count();
         int notEqualCount = existingObjects.Count(r => !r.IsEqual);
         int equalCount = existingObjects.Count(r => r.IsEqual);
@@ -1072,7 +1147,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the HTML page showing the body of a single procedure/view/table, with copy functionality.
     /// </summary>
-    public static void WriteBodyHtml(string filePath, string title, string body, string returnPage, string ? createTableScript=null)
+    public static void WriteBodyHtml(string filePath, string title, string body, string returnPage, string? createTableScript = null)
     {
         StringBuilder html = new StringBuilder();
         html.AppendLine(BodyTemplate.Replace("{title}", title));
