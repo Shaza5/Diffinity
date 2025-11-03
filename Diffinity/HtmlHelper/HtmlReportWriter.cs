@@ -112,7 +112,7 @@ public static class HtmlReportWriter
     {connectionsTable}
     <h3>{Date}</h3>
     <h3>{Duration}</h3>
-    <div class=""legend"">Counts are (changed / new / unchanged)</div>
+    <div class=""legend"">Counts are (new / changed / unchanged)</div>
     <ul>
         <li>{procsIndex}</li>
         <li>{viewsIndex}</li>
@@ -722,8 +722,7 @@ public static class HtmlReportWriter
         DateTime date = DateTime.UtcNow; ;
         string Date = date.ToString("MM/dd/yyyy hh:mm tt ") + "UTC";
         TimeSpan ts = TimeSpan.FromMilliseconds(Duration);
-        double minutes = Duration / 60000.0;
-        string formattedDuration = $"{minutes:F1} minutes";
+        string formattedDuration = ts.TotalMinutes >= 1 ? $"{ts.TotalMinutes:F1} minutes" : $"{ts.TotalSeconds:F0} seconds";
 
         static bool Show(string? path, int count) =>
             !string.IsNullOrWhiteSpace(path) && (count > 0);
