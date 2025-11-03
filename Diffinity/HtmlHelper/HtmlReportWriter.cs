@@ -813,11 +813,12 @@ public static class HtmlReportWriter
 );
 
         #region 1-Create the new table
-        var newObjects = results.Where(r => r.IsDestinationEmpty).ToList();
+        var newObjects = results.Where(r => r.IsDestinationEmpty && !r.IsTenantSpecific).ToList();
+        int newObjectsCount = newObjects.Count();
         if (newObjects.Any())
         {
             StringBuilder newTable = new StringBuilder();
-            newTable.AppendLine($@"<h2 style=""color: #B42A68;"">New {result.Type}s in {sourceServer.name} : </h2>
+            newTable.AppendLine($@"<h2 style=""color: #B42A68;"">New {result.Type}s in {sourceServer.name} ({newObjectsCount}) : </h2>
             <table>
                 <tr>
                     <th></th>
@@ -883,11 +884,12 @@ public static class HtmlReportWriter
         #endregion
 
         #region 2-Create the Unchanged Objects Table
-        var unchangedObjects = results.Where(r => r.IsEqual && filter == DbObjectFilter.ShowUnchanged).ToList();
+        var unchangedObjects = results.Where(r => r.IsEqual && filter == DbObjectFilter.ShowUnchanged && !r.IsDestinationEmpty && !r.IsTenantSpecific).ToList();
+        int equalCount = unchangedObjects.Count();
         if (unchangedObjects.Any())
         {
             StringBuilder unchangedTable = new StringBuilder();
-            unchangedTable.AppendLine($@"<h2 style=""color: #B42A68;"">Unchanged {result.Type}s : </h2>
+            unchangedTable.AppendLine($@"<h2 style=""color: #B42A68;"">Unchanged {result.Type}s ({equalCount}) : </h2>
             <table>
                 <tr>
                     <th></th>
@@ -954,20 +956,17 @@ public static class HtmlReportWriter
 
         #endregion
 
-
-
-        var existingObjects = results.Where(r => !r.IsDestinationEmpty).ToList();
-        string copySection = existingObjects.Any() ? $@"<div class=""copy-Section"" style=""display:flex;justify-content:flex-end;margin:10px 0 6px 0;"">
+        #region 3-Create the Changed Objects Table
+        var changedObjects = results.Where(r => !r.IsDestinationEmpty && !r.IsEqual && !r.IsTenantSpecific).ToList();
+        int notEqualCount = changedObjects.Count();
+        string copySection = changedObjects.Any() ? $@"<div class=""copy-Section"" style=""display:flex;justify-content:flex-end;margin:10px 0 6px 0;"">
         <button id=""copyAll"" class=""copy-selected"">Copy Selected</button>
       </div>"
            : string.Empty;
         html.Replace("{copySection}", copySection);
-
-
-        #region 3-Create the Changed Objects Table
         int Number = 1;
-        html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s :</h2>");
-        foreach (var item in existingObjects)
+        html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s ({notEqualCount}) :</h2>");
+        foreach (var item in changedObjects)
         {
             string sourceCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo): item.SourceBody;
             string destCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.DestinationTableInfo): item.DestinationBody;
@@ -986,8 +985,7 @@ public static class HtmlReportWriter
             string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
             string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
-            if (!item.IsEqual && !item.IsTenantSpecific)
-            {
+          
                 html.Append($@"<tr data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
                 <td>{Number}</td>
                 <td>{item.schema}.{item.Name}</td>
@@ -1001,7 +999,7 @@ public static class HtmlReportWriter
                 </td>
                 </tr>");
                 Number++;
-            }
+            
 
         }
         html.AppendLine(
@@ -1093,8 +1091,9 @@ public static class HtmlReportWriter
                        {{copytnt}}");
         #endregion
 
-        #region 3-Tenant-Specific Table
+        #region 4-Tenant-Specific Table
         var tenantSpecific = results.Where(r => r.IsTenantSpecific).ToList();
+        int tenantCount = tenantSpecific.Count();
         string copytenant = tenantSpecific.Any() ? $@"<div class=""copy-Section"" style=""display:flex;justify-content:flex-end;margin:10px 0 6px 0;"">
         <button id=""copytnt"" class=""copy-selected"">Copy Selected</button>
       </div>"
@@ -1103,8 +1102,7 @@ public static class HtmlReportWriter
 
         if (tenantSpecific.Any())
         {
-            string typePlural = result.Type + "s"; 
-            html.AppendLine($@"<br><h2 style=""color: #B42A68;"">Tenant Specific {typePlural} :</h2>");
+            html.AppendLine($@"<br><h2 style=""color: #B42A68;"">Tenant Specific {result.Type}s ({tenantCount}) :</h2>");
             html.AppendLine(@"
         <table>
           <tr>
@@ -1219,11 +1217,7 @@ public static class HtmlReportWriter
                        <br>");
         #endregion
 
-        #region 4-Update counts in the nav bar
-        int newObjectsCount = newObjects.Count();
-        int notEqualCount = existingObjects.Count(r => !r.IsEqual && !r.IsTenantSpecific);
-        int equalCount = existingObjects.Count(r => r.IsEqual && !r.IsTenantSpecific);
-        int tenantCount = tenantSpecific.Count();
+        #region 5-Update counts in the nav bar
         string countObjects = filter == DbObjectFilter.ShowUnchanged ? $"({newObjectsCount}/{equalCount}/{notEqualCount}/{tenantCount})" : $"({newObjectsCount}/{notEqualCount}/{tenantCount})";
         #endregion
         html.Append($@"
