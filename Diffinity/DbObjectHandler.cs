@@ -156,8 +156,8 @@ public class DbObjectHandler
     /// </summary>
     /// <param name="body">SQL statement body to modify.</param>
     /// <returns>Modified SQL statement with ALTER keywords.</returns>
-    public static string ReplaceCreateWithCreateOrAlter(string body) => body.Replace("CREATE", "CREATE OR ALTER").Replace("Create", "CREATE OR ALTER").Replace("create", "CREATE OR ALTER");
-
+    public static string ReplaceCreateWithCreateOrAlter(string body) => Regex.Replace( body,
+            @"(?im)^(?!\s*--)(?!\s*/\*)(?!\s*\*)\s*(?:create\s+or\s+alter(?<rest1>.*)|create\b(?!\s+or\s+alter)(?<rest2>.*))$", "CREATE OR ALTER${rest1}${rest2}");
     public class dbObjectResult
     {
         public string Type { get; set; }
@@ -170,7 +170,7 @@ public class DbObjectHandler
         public string? DifferencesFile { get; set; }
         public string? SourceBody { get; set; }
         public string? DestinationBody { get; set; }
-
+        public bool IsTenantSpecific { get; set; }   // marks --client specific
         public List<tableDto> SourceTableInfo { get; set; }
         public List<tableDto> DestinationTableInfo { get; set; }
         public string? NewFile { get; set; } // null if not altered

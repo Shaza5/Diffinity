@@ -206,6 +206,9 @@ public class DbComparer : DbObjectHandler
 
             // Step 5 - Fetch definitions from both servers
             (string sourceBody, string destinationBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString, destinationServer.connectionString, schema, proc);
+            bool isTenantSpecific =
+               (!string.IsNullOrEmpty(sourceBody) && sourceBody.IndexOf("--client specific", StringComparison.OrdinalIgnoreCase) >= 0) ||
+               (!string.IsNullOrEmpty(destinationBody) && destinationBody.IndexOf("--client specific", StringComparison.OrdinalIgnoreCase) >= 0);
             bool areEqual = AreBodiesEqual(sourceBody, destinationBody);
             string change = areEqual ? "No changes" : "Changes detected";
             Serilog.Log.Information($"{schema}.{proc}: {change}");
@@ -265,7 +268,8 @@ public class DbComparer : DbObjectHandler
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
                 DifferencesFile = isDifferencesVisible ? Path.Combine(safeSchema, differencesFile) : null,
-                NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
+                NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null,
+                IsTenantSpecific = isTenantSpecific
             });
         });
 
@@ -334,6 +338,9 @@ public class DbComparer : DbObjectHandler
 
             // Step 5 - Fetch definitions from both servers
             (string sourceBody, string destinationBody) = ViewFetcher.GetViewBody(sourceServer.connectionString, destinationServer.connectionString, schema, view);
+            bool isTenantSpecific =
+               (!string.IsNullOrEmpty(sourceBody) && sourceBody.IndexOf("--client specific", StringComparison.OrdinalIgnoreCase) >= 0) ||
+               (!string.IsNullOrEmpty(destinationBody) && destinationBody.IndexOf("--client specific", StringComparison.OrdinalIgnoreCase) >= 0);
             bool areEqual = AreBodiesEqual(sourceBody, destinationBody);
             string change = areEqual ? "No changes" : "Changes detected";
             Serilog.Log.Information($"{schema}.{view}: {change}");
@@ -392,7 +399,8 @@ public class DbComparer : DbObjectHandler
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
                 DifferencesFile = isDifferencesVisible ? Path.Combine(safeSchema, differencesFile) : null,
-                NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null
+                NewFile = wasAltered ? Path.Combine(safeSchema, newFile) : null,
+                IsTenantSpecific = isTenantSpecific
             });
         });
 
@@ -642,7 +650,6 @@ public class DbComparer : DbObjectHandler
 
             // 5) Script UDTs on both servers
             (string sourceBody, string destBody) = UdtFetcher.GetUdtBody(sourceServer.connectionString, destinationServer.connectionString, schema, name);
-
             bool areEqual = AreBodiesEqual(sourceBody, destBody);
             bool isDestinationEmpty = string.IsNullOrWhiteSpace(destBody);
             string change = areEqual ? "No changes" : "Changes detected";
