@@ -684,7 +684,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the main index summary HTML page linking to individual reports for procedures, views, and tables.
     /// </summary>
-    public static string WriteIndexSummary(DbServer source, DbServer destination, string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null, string? udtIndexPath = null, int? procCount = 0, int? viewCount = 0, int? tableCount = 0, int? udtCount = 0, string? procsCountText = null, string? viewsCountText = null, string? tablesCountText = null, string? udtsCountText = null)
+    public static string WriteIndexSummary(DbServer source, DbServer destination,string outputPath, long Duration, string? ignoredIndexPath = null, string? procIndexPath = null, string? viewIndexPath = null, string? tableIndexPath = null, string? udtIndexPath = null, int? procCount = 0, int? viewCount = 0 , int? tableCount = 0, int? udtCount = 0, string? procsCountText = null, string? viewsCountText = null, string? tablesCountText = null, string? udtsCountText = null)
     {
         // Extract server and database names from connection strings
         var sourceBuilder = new SqlConnectionStringBuilder(source.connectionString);
@@ -776,7 +776,7 @@ public static class HtmlReportWriter
         StringBuilder html = new();
         var result = results[0];
         string returnPage = Path.Combine("..", "index.html");
-        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}", BuildNav(run, isIgnoredEmpty, ignoredCount)));
+        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}", BuildNav(run, isIgnoredEmpty,ignoredCount)));
         html.AppendLine(@"
         <script>
           const STORE = sessionStorage; 
@@ -962,8 +962,8 @@ public static class HtmlReportWriter
         html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s :</h2>");
         foreach (var item in existingObjects)
         {
-            string sourceCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo) : item.SourceBody;
-            string destCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.DestinationTableInfo) : item.DestinationBody;
+            string sourceCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo): item.SourceBody;
+            string destCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.DestinationTableInfo): item.DestinationBody;
 
             // Prepare file links
             string sourceColumn = item.SourceFile != null ? $@"<label class='pick'>
@@ -1147,7 +1147,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Writes the HTML page showing the body of a single procedure/view/table, with copy functionality.
     /// </summary>
-    public static void WriteBodyHtml(string filePath, string title, string body, string returnPage, string? createTableScript = null)
+    public static void WriteBodyHtml(string filePath, string title, string body, string returnPage, string ? createTableScript=null)
     {
         StringBuilder html = new StringBuilder();
         html.AppendLine(BodyTemplate.Replace("{title}", title));
