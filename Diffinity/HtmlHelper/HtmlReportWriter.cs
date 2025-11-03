@@ -10,7 +10,7 @@ using System.Reflection.Metadata.Ecma335;
 using System.Text;
 using System.Text.RegularExpressions;
 using static Diffinity.DbObjectHandler;
-using System.Net; 
+using System.Net;
 
 
 
@@ -112,7 +112,7 @@ public static class HtmlReportWriter
     {connectionsTable}
     <h3>{Date}</h3>
     <h3>{Duration}</h3>
-    <div class=""legend"">Counts are (changed / new / unchanged)</div>
+    <div class=""legend"">{countsLegend}</div>
     <ul>
         <li>{procsIndex}</li>
         <li>{viewsIndex}</li>
@@ -278,17 +278,18 @@ public static class HtmlReportWriter
     <h1>[{source}] vs [{destination}] </h1>
     {nav}
     {NewTable}
+    {UnchangedTable}
     {copySection}
 <table>
     <tr>
         <th></th>
         <th>{MetaData} Name</th>
-        <th> <label class=""hdr""><input type=""checkbox"" id=""chk-src-all""><span>{source} Original</span></label> </th>
-        <th> <label class=""hdr""><input type=""checkbox"" id=""chk-dst-all""><span>{destination} Original</span></label> </th>
+        <th> <label class=""hdr""><input type=""checkbox"" id= {selectAllSrc}><span>{source} Original</span></label> </th>
+        <th> <label class=""hdr""><input type=""checkbox"" id= {selectAllDst}><span>{destination} Original</span></label> </th>
         <th>Changes</th>
         <th class=""done-col""></th>
     </tr>
-    ";
+";
     private const string IgnoredTemplate = @"
 <!DOCTYPE html>
 <html lang=""en"">
@@ -722,8 +723,7 @@ public static class HtmlReportWriter
         DateTime date = DateTime.UtcNow; ;
         string Date = date.ToString("MM/dd/yyyy hh:mm tt ") + "UTC";
         TimeSpan ts = TimeSpan.FromMilliseconds(Duration);
-        double minutes = Duration / 60000.0;
-        string formattedDuration = $"{minutes:F1} minutes";
+        string formattedDuration = ts.TotalMinutes >= 1 ? $"{ts.TotalMinutes:F1} minutes" : $"{ts.TotalSeconds:F0} seconds";
 
         static bool Show(string? path, int count) =>
             !string.IsNullOrWhiteSpace(path) && (count > 0);
@@ -745,6 +745,14 @@ public static class HtmlReportWriter
             ? ""
             : $@"<a href=""{ignoredIndexPath}"" class=""btn"">Ignored</a>";
 
+        bool legendHasUnchanged =
+            new[] { procsCountText, viewsCountText, tablesCountText, udtsCountText }
+            .Any(t => !string.IsNullOrWhiteSpace(t) && t.Count(ch => ch == '/') == 3);
+
+        string countsLegend = legendHasUnchanged
+            ? "Counts are (new / unchanged / changed / tenant)"
+            : "Counts are (new / changed / tenant)";
+
         // Replace placeholders in the index template
         html.Append(
             IndexTemplate
@@ -756,7 +764,7 @@ public static class HtmlReportWriter
               .Replace("{ignoredIndex}", ignoredIndex)
               .Replace("{Date}", Date)
               .Replace("{Duration}", formattedDuration)
-
+              .Replace("{countsLegend}", countsLegend)
         );
         string indexPath = Path.Combine(outputPath, "index.html");
 
@@ -775,7 +783,7 @@ public static class HtmlReportWriter
         StringBuilder html = new();
         var result = results[0];
         string returnPage = Path.Combine("..", "index.html");
-        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}", BuildNav(run, isIgnoredEmpty,ignoredCount)));
+        html.Append(ComparisonTemplate.Replace("{source}", sourceServer.name).Replace("{destination}", destinationServer.name).Replace("{MetaData}", result.Type).Replace("{nav}", BuildNav(run, isIgnoredEmpty, ignoredCount)).Replace("{selectAllSrc}", "chk-src-all").Replace("{selectAllDst}", "chk-dst-all"));
         html.AppendLine(@"
         <script>
           const STORE = sessionStorage; 
@@ -874,6 +882,80 @@ public static class HtmlReportWriter
         }
         #endregion
 
+        #region 2-Create the Unchanged Objects Table
+        var unchangedObjects = results.Where(r => r.IsEqual && filter == DbObjectFilter.ShowUnchanged).ToList();
+        if (unchangedObjects.Any())
+        {
+            StringBuilder unchangedTable = new StringBuilder();
+            unchangedTable.AppendLine($@"<h2 style=""color: #B42A68;"">Unchanged {result.Type}s : </h2>
+            <table>
+                <tr>
+                    <th></th>
+                    <th>{result.Type} Name</th>
+                    <th></th>
+                    <th></th>
+                    <th class=""done-col""></th>
+                </tr>");
+
+            int newCount = 1;
+            foreach (var item in unchangedObjects)
+            {
+
+                string copyPayload = item.Type == "Table"
+                    ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo)
+                    : item.SourceBody;
+
+
+                string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
+                string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button><br>
+                <span class=""copy-target"" style=""display:none;"">{copyPayload}</span>";
+
+                unchangedTable.Append($@"<tr data-key=""Unchanged|{result.Type}|{item.schema}.{item.Name}"">
+                                <td>{newCount}</td>
+                                <td>{item.schema}.{item.Name}</td>
+                                <td>{sourceLink}</td>
+                                <td>{copyButton}</td>
+                                <td class=""done-col"">
+                                    <input type=""checkbox""
+                                           class=""mark-done""
+                                           onchange=""toggleRow(this)""
+                                           data-key=""Unchanged|{result.Type}|{item.schema}.{item.Name}"">
+                                </td>
+                                </tr>");
+                newCount++;
+            }
+
+            unchangedTable.Append("</table><br><br>");
+            unchangedTable.AppendLine(
+                @"<script>
+                    function copyPane(button) {
+                        const container = button.closest('tr');
+                        const codeBlock = container.querySelector('.copy-target');
+                        const text = codeBlock?.innerText.trim();
+
+                        navigator.clipboard.writeText(text).then(() => {
+                            button.classList.add('copied'); 
+                            setTimeout(() => button.classList.remove('copied'), 2000); 
+                        }).catch(err => {
+                            console.error('Copy failed:', err);
+                            alert('Failed to copy!');
+                        });
+                     }
+                </script>"
+            );
+            html.Replace("{UnchangedTable}", unchangedTable.ToString());
+
+        }
+        else
+        {
+            html.Replace("{UnchangedTable}", "");
+        }
+
+
+        #endregion
+
+
+
         var existingObjects = results.Where(r => !r.IsDestinationEmpty).ToList();
         string copySection = existingObjects.Any() ? $@"<div class=""copy-Section"" style=""display:flex;justify-content:flex-end;margin:10px 0 6px 0;"">
         <button id=""copyAll"" class=""copy-selected"">Copy Selected</button>
@@ -882,7 +964,7 @@ public static class HtmlReportWriter
         html.Replace("{copySection}", copySection);
 
 
-        #region 2-Create the Comparison Table
+        #region 3-Create the Changed Objects Table
         int Number = 1;
         html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s :</h2>");
         foreach (var item in existingObjects)
@@ -902,9 +984,9 @@ public static class HtmlReportWriter
     <span class=""copy-target copy-dst"" style=""display:none;"">{destCopy}</span>" : "—";
 
             string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
-                string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
+            string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
-            if ((item.IsEqual && filter == DbObjectFilter.ShowUnchanged) || !item.IsEqual)
+            if (!item.IsEqual && !item.IsTenantSpecific)
             {
                 html.Append($@"<tr data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
                 <td>{Number}</td>
@@ -1008,20 +1090,146 @@ public static class HtmlReportWriter
 );
         html.Append($@" </table>
                        <br>
-                       <a href=""{returnPage}"" class=""return-btn"">Return to Index</a>
-                       </body>
-
-                       </html>");
-
-
+                       {{copytnt}}");
         #endregion
 
-        #region 3-Update counts in the nav bar
+        #region 3-Tenant-Specific Table
+        var tenantSpecific = results.Where(r => r.IsTenantSpecific).ToList();
+        string copytenant = tenantSpecific.Any() ? $@"<div class=""copy-Section"" style=""display:flex;justify-content:flex-end;margin:10px 0 6px 0;"">
+        <button id=""copytnt"" class=""copy-selected"">Copy Selected</button>
+      </div>"
+           : string.Empty;
+        html.Replace("{copytnt}", copytenant);
+
+        if (tenantSpecific.Any())
+        {
+            string typePlural = result.Type + "s"; 
+            html.AppendLine($@"<br><h2 style=""color: #B42A68;"">Tenant Specific {typePlural} :</h2>");
+            html.AppendLine(@"
+        <table>
+          <tr>
+            <th></th>
+            <th>Name</th>
+            <th><label class='hdr'><input type='checkbox' id='chk-tnt-src'><span>" + sourceServer.name + @" Original</span></label></th>
+            <th><label class='hdr'><input type='checkbox' id='chk-tnt-dst'><span>" + destinationServer.name + @" Original</span></label></th>
+            <th class='done-col'></th>
+          </tr>");
+
+            int tsNum = 1;
+            foreach (var item in tenantSpecific)
+            {
+                // Build the copy payloads per type
+                string sourceCopy = item.Type == "Table"
+                    ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo)
+                    : item.SourceBody;
+
+                string destCopy = item.Type == "Table"
+                    ? CreateTableScript(item.schema, item.Name, item.DestinationTableInfo)
+                    : item.DestinationBody;
+
+                string sourceColumn = !string.IsNullOrWhiteSpace(item.SourceFile) ? $@"<label class='pick'>
+              <input type='checkbox' class='tnt-src'> <a href=""{item.SourceFile}"">View</a></label>
+              <button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button>
+              <span class=""copy-target copy-src"" style=""display:none;"">{sourceCopy}</span>" : "—";
+
+                string destinationColumn = !string.IsNullOrWhiteSpace(item.DestinationFile) ? $@"<label class='pick'>
+              <input type='checkbox' class='tnt-dst'><a href=""{item.DestinationFile}"">View</a></label>
+              <button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button>
+              <span class=""copy-target copy-dst"" style=""display:none;"">{destCopy}</span>" : "—";
+
+                html.Append($@"
+          <tr data-key=""tenant|{item.Type}|{item.schema}.{item.Name}"">
+            <td>{tsNum}</td>
+            <td>{item.schema}.{item.Name}</td>
+            <td>{sourceColumn}</td>
+            <td>{destinationColumn}</td>
+            <td class=""done-col"">
+              <input type=""checkbox""
+                     class=""mark-done""
+                     onchange=""toggleRow(this)""
+                     data-key=""tenant|{item.Type}|{item.schema}.{item.Name}"">
+            </td>
+          </tr>");
+                tsNum++;
+            }
+
+            html.AppendLine(@"
+        </table>
+        <script>
+          (function() {
+            const srcAll = document.getElementById('chk-tnt-src');
+            const dstAll = document.getElementById('chk-tnt-dst');
+
+            if (srcAll) {
+              srcAll.addEventListener('change', () => {
+                document.querySelectorAll('.tnt-src').forEach(cb => cb.checked = srcAll.checked);
+              });
+            }
+            if (dstAll) {
+              dstAll.addEventListener('change', () => {
+                document.querySelectorAll('.tnt-dst').forEach(cb => cb.checked = dstAll.checked);
+              });
+            }
+
+            function getText(el) { return (el && el.textContent ? el.textContent : '').trim(); }
+
+            function collectAll() {
+              const section = document.getElementById('chk-tnt-src')?.closest('table')?.parentElement || document.body;
+              const rows = Array.from(section.querySelectorAll('table tr')).slice(1);
+              const parts = [];
+
+              rows.forEach(tr => {
+                const srcCb = tr.querySelector('.tnt-src');
+                const dstCb = tr.querySelector('.tnt-dst');
+
+                if (srcCb && srcCb.checked) {
+                  const span = tr.querySelector('.copy-src');
+                  const txt = getText(span);
+                  if (txt) parts.push(txt);
+                }
+                if (dstCb && dstCb.checked) {
+                  const span = tr.querySelector('.copy-dst');
+                  const txt = getText(span);
+                  if (txt) parts.push(txt);
+                }
+              });
+
+              return parts.length ? parts.join('\nGO\n\n') + '\nGO' : '';
+            }
+
+            const btn = document.getElementById('copytnt');
+            if (btn) {
+              btn.addEventListener('click', () => {
+                const blob = collectAll();
+                if (!blob) { alert('No items selected.'); return; }
+                navigator.clipboard.writeText(blob).then(() => {
+                  const old = btn.textContent;
+                  btn.textContent = 'Copied!';
+                  setTimeout(() => btn.textContent = old, 1200);
+                }).catch(err => {
+                  console.error('Copy failed:', err);
+                  alert('Failed to copy!');
+                });
+              });
+            }
+          })();
+        </script>");
+        }
+        html.Append($@" </table>
+                       <br>");
+        #endregion
+
+        #region 4-Update counts in the nav bar
         int newObjectsCount = newObjects.Count();
-        int notEqualCount = existingObjects.Count(r => !r.IsEqual);
-        int equalCount = existingObjects.Count(r => r.IsEqual);
-        string countObjects = filter == DbObjectFilter.ShowUnchanged ? $"({newObjectsCount}/{notEqualCount}/{equalCount})" : $"({newObjectsCount}/{notEqualCount})";
+        int notEqualCount = existingObjects.Count(r => !r.IsEqual && !r.IsTenantSpecific);
+        int equalCount = existingObjects.Count(r => r.IsEqual && !r.IsTenantSpecific);
+        int tenantCount = tenantSpecific.Count();
+        string countObjects = filter == DbObjectFilter.ShowUnchanged ? $"({newObjectsCount}/{equalCount}/{notEqualCount}/{tenantCount})" : $"({newObjectsCount}/{notEqualCount}/{tenantCount})";
         #endregion
+        html.Append($@"
+        <a href=""{returnPage}"" class=""return-btn"">Return to Index</a>
+        </body>
+        </html>");
 
         return (html.ToString(), countObjects);
     }
