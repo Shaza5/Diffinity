@@ -275,7 +275,7 @@ public class DbComparer : DbObjectHandler
 
         // Step 10 - Generate summary report
         (string procReportHtml, string procCount) = HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(proceduresFolderPath, "index.html"), results, filter, run, isIgnoredEmpty, ignoredCount);
-        int procDiffsCount = filter == DbObjectFilter.HideUnchanged ? results.Count(r => (r.IsDestinationEmpty) || (!r.IsDestinationEmpty && !r.IsEqual)) : 1; // changed
+        int procDiffsCount = filter == DbObjectFilter.HideUnchanged ? results.Count(r => (r.IsDestinationEmpty) || (!r.IsDestinationEmpty && !r.IsEqual)) : results.Count(); 
         return new summaryReportDto
         {
             path = "Procedures/index.html",
@@ -406,7 +406,7 @@ public class DbComparer : DbObjectHandler
 
         // Step 10 - Generate summary report
         (string viewReportHtml, string viewCount) = HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(viewsFolderPath, "index.html"), results, filter, run, isIgnoredEmpty, ignoredCount);
-        int viewDiffsCount = filter == DbObjectFilter.HideUnchanged ? results.Count(r => (r.IsDestinationEmpty) || (!r.IsDestinationEmpty && !r.IsEqual)) : 1; // changed
+        int viewDiffsCount = filter == DbObjectFilter.HideUnchanged ? results.Count(r => (r.IsDestinationEmpty) || (!r.IsDestinationEmpty && !r.IsEqual)) : results.Count(); // changed
         return new summaryReportDto
         {
             path = "Views/index.html",
@@ -591,7 +591,7 @@ public class DbComparer : DbObjectHandler
 
         // Step 11 - Generate summary report
         (string tableHtmlReport, string tablesCount) = HtmlReportWriter.WriteSummaryReport(sourceServer, destinationServer, Path.Combine(tablesFolderPath, "index.html"), results, filter, run, isIgnoredEmpty, ignoredCount);
-        int tableDiffsCount = filter == DbObjectFilter.HideUnchanged ? results.Count(r => (r.IsDestinationEmpty) || (!r.IsDestinationEmpty && !r.IsEqual)) : 1; // changed
+        int tableDiffsCount = filter == DbObjectFilter.HideUnchanged ? results.Count(r => (r.IsDestinationEmpty) || (!r.IsDestinationEmpty && !r.IsEqual)) : results.Count(); 
         return new summaryReportDto
         {
             path = "Tables/index.html",
@@ -707,7 +707,7 @@ public class DbComparer : DbObjectHandler
             sourceServer, destinationServer, Path.Combine(udtsFolderPath, "index.html"),
             results, filter, run, isIgnoredEmpty, ignoredCount);
 
-        int udtDiffsCount = filter == DbObjectFilter.HideUnchanged ? results.Count(r => (r.IsDestinationEmpty) || (!r.IsDestinationEmpty && !r.IsEqual)) : 1; // changed
+        int udtDiffsCount = filter == DbObjectFilter.HideUnchanged ? results.Count(r => (r.IsDestinationEmpty) || (!r.IsDestinationEmpty && !r.IsEqual)) : results.Count(); 
 
         return new summaryReportDto
         {
