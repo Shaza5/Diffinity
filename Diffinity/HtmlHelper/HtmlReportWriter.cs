@@ -957,7 +957,7 @@ public static class HtmlReportWriter
         html.Replace("{copySection}", copySection);
 
 
-        #region 3-Create the Chnaged Objects Table
+        #region 3-Create the Changed Objects Table
         int Number = 1;
         html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s :</h2>");
         foreach (var item in existingObjects)
