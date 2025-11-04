@@ -36,7 +36,7 @@ public static class HtmlReportWriter
             color: #333;
         }
         h1,h2 {
-            color: #EC317F;
+            color: #36454F;
             text-align: center;
             margin-bottom: 10px;
         }
@@ -49,7 +49,7 @@ public static class HtmlReportWriter
             font-size: 1.2em;
         }
         a {
-            color: #EC317F;
+            color: #36454F;
             text-decoration: none;
             font-weight: 600;
         }
@@ -61,7 +61,7 @@ public static class HtmlReportWriter
             width: 220px;
             margin: 0 auto;
             padding: 12px 0;
-            background-color: #EC317F;
+            background-color: #36454F;
             color: white;
             font-weight: 600;
             text-align: center;
@@ -72,10 +72,10 @@ public static class HtmlReportWriter
             font-size: 1rem;
         }
         .btn:hover {
-            background-color: #b42a68;
+            background-color: #778899;
         }
         h3{
-        color: #B42A68;
+        color: #2C3539;
         text-align: center;
         margin-bottom:40px;
         }
@@ -86,18 +86,18 @@ public static class HtmlReportWriter
             border-collapse: collapse;
         }
 
-        /* center everything */
         table.conn th,
         table.conn td {
             border-bottom: 1px solid #ddd;
             padding: 12px 14px;
-            text-align: center;
+            text-align: left;
         }
 
         
         table.conn th {
-            background-color: #EC317F; 
-            color: #fff;               
+            background-color: #f5f5f5; 
+            color: black;   
+            text-align: left;
         }
 
         
@@ -139,7 +139,7 @@ public static class HtmlReportWriter
             color: #333;
         }
         h1 {
-            color: #EC317F;
+            color: #36454F;
             text-align: center;
             margin-bottom: 40px;
         }
@@ -164,7 +164,7 @@ public static class HtmlReportWriter
             font-weight: 600;
         }
         a {
-            color: #EC317F;
+            color: #36454F;
             text-decoration: none;
             font-weight: 600;
         }
@@ -180,7 +180,7 @@ public static class HtmlReportWriter
         
         .top-nav a {
             position: relative;
-            color: #EC317F;
+            color: #36454F;
             text-decoration: none;
             font-weight: 600;
             font-size: 1.2rem;
@@ -194,7 +194,7 @@ public static class HtmlReportWriter
             bottom: 0;
             width: 100%;
             height: 3px;
-            background-color: #EC317F;
+            background-color: #36454F;
             transform: scaleX(0);
             transform-origin: bottom left;
             transition: transform 0.3s ease;
@@ -230,7 +230,7 @@ public static class HtmlReportWriter
             width: 220px;
             margin: 0 auto;
             padding: 12px 0;
-            background-color: #EC317F;
+            background-color: #36454F;
             color: white;
             font-weight: 600;
             text-align: center;
@@ -241,12 +241,12 @@ public static class HtmlReportWriter
             font-size: 1rem;
         }
         .return-btn:hover {
-            background-color: #b42a68;
+            background-color: #778899;
         }
         .copy-selected {
             float: right;
             margin: 0px 12px 0px 50px;
-            background-color: #EC317F;
+            background-color: #36454F;
             color: white;
             border: none;
             font-size : 15px;
@@ -256,7 +256,7 @@ public static class HtmlReportWriter
             box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
         }
         .copy-selected:hover {
-              background-color: #b42a68;
+              background-color: #778899;
         }
         .pick { display:inline-flex; align-items:center; gap:8px; font-size:1rem; }
         .pick a { font-size:1rem; }           /* ensure same size as lone <a> */
@@ -306,7 +306,7 @@ public static class HtmlReportWriter
             color: #333;
         }
         h1 {
-            color: #EC317F;
+            color: #36454F;
             text-align: center;
             margin-bottom: 40px;
         }
@@ -332,7 +332,7 @@ public static class HtmlReportWriter
             font-weight: 600;
         }
         a {
-            color: #EC317F;
+            color: #36454F;
             text-decoration: none;
             font-weight: 600;
         }
@@ -348,7 +348,7 @@ public static class HtmlReportWriter
         
         .top-nav a {
             position: relative;
-            color: #EC317F;
+            color: #36454F;
             text-decoration: none;
             font-weight: 600;
             font-size: 1.2rem;
@@ -370,7 +370,7 @@ public static class HtmlReportWriter
             bottom: 0;
             width: 100%;
             height: 3px;
-            background-color: #EC317F;
+            background-color: #36454F;
             transform: scaleX(0);
             transform-origin: bottom left;
             transition: transform 0.3s ease;
@@ -384,7 +384,7 @@ public static class HtmlReportWriter
             width: 220px;
             margin: 0 auto;
             padding: 12px 0;
-            background-color: #EC317F;
+            background-color: #36454F;
             color: white;
             font-weight: 600;
             text-align: center;
@@ -395,7 +395,7 @@ public static class HtmlReportWriter
             font-size: 1rem;
         }
         .return-btn:hover {
-            background-color: #b42a68;
+            background-color: #778899;
         }
     </style>
 </head>
@@ -426,7 +426,7 @@ public static class HtmlReportWriter
             box-shadow: 0 4px 10px rgba(0,0,0,0.07);
         }
         h1 {
-            color: #EC317F;
+            color: #36454F;
             text-align: center;
             margin-bottom: 40px;
         }
@@ -458,8 +458,8 @@ public static class HtmlReportWriter
             border-bottom: 1px solid #eee;
         }
         
-        th {background - color: #EC317F;
-            color: #EC317F;
+        th {background - color: #36454F;
+            color: #36454F;
             font-weight: 600;
             text-transform: uppercase;
             font-size: 0.9rem;
@@ -478,7 +478,7 @@ public static class HtmlReportWriter
             width: 220px;
             margin: 0 auto;
             padding: 12px 0;
-            background-color: #EC317F;
+            background-color: #36454F;
             color: white;
             font-weight: 600;
             text-align: center;
@@ -513,13 +513,13 @@ public static class HtmlReportWriter
             display: none;
        }
         .use{
-            color: #EC317F;
+            color: #36454F;
             font-weight : bold;
             float: left;
             font-size: 20px
         }
         .return-btn:hover {
-            background-color: #b42a68;
+            background-color: #778899;
         }
         .difference {
             background-color: #fff3b0;  
@@ -577,7 +577,7 @@ public static class HtmlReportWriter
             box-shadow: 0 4px 10px rgba(0,0,0,0.07);
         }
         h1 {
-            color: #EC317F;
+            color: #36454F;
             text-align: center;
             margin-bottom: 40px;
         }
@@ -659,7 +659,7 @@ public static class HtmlReportWriter
             width: 220px;
             margin: 0 auto;
             padding: 12px 0;
-            background-color: #EC317F;
+            background-color: #36454F;
             color: white;
             font-weight: 600;
             text-align: center;
@@ -670,7 +670,7 @@ public static class HtmlReportWriter
             font-size: 1rem;
         } 
        .return-btn:hover {
-            background-color: #b42a68;
+            background-color: #778899;
         }
         .inserted { background-color: #c6f6c6; }
         .deleted { background-color: #f6c6c6; }
@@ -818,7 +818,7 @@ public static class HtmlReportWriter
         if (newObjects.Any())
         {
             StringBuilder newTable = new StringBuilder();
-            newTable.AppendLine($@"<h2 style=""color: #B42A68;"">New {result.Type}s in {sourceServer.name} ({newObjectsCount}) : </h2>
+            newTable.AppendLine($@"<h2 style=""color: #2C3539;"">New {result.Type}s in {sourceServer.name} ({newObjectsCount}) : </h2>
             <table>
                 <tr>
                     <th></th>
@@ -889,7 +889,7 @@ public static class HtmlReportWriter
         if (unchangedObjects.Any())
         {
             StringBuilder unchangedTable = new StringBuilder();
-            unchangedTable.AppendLine($@"<h2 style=""color: #B42A68;"">Unchanged {result.Type}s ({equalCount}) : </h2>
+            unchangedTable.AppendLine($@"<h2 style=""color: #2C3539;"">Unchanged {result.Type}s ({equalCount}) : </h2>
             <table>
                 <tr>
                     <th></th>
@@ -965,7 +965,7 @@ public static class HtmlReportWriter
            : string.Empty;
         html.Replace("{copySection}", copySection);
         int Number = 1;
-        html.AppendLine($@"<h2 style = ""color: #B42A68;"">Changed {result.Type}s ({notEqualCount}) :</h2>");
+        html.AppendLine($@"<h2 style = ""color: #2C3539;"">Changed {result.Type}s ({notEqualCount}) :</h2>");
         foreach (var item in changedObjects)
         {
             string sourceCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo): item.SourceBody;
@@ -1102,7 +1102,7 @@ public static class HtmlReportWriter
 
         if (tenantSpecific.Any())
         {
-            html.AppendLine($@"<br><h2 style=""color: #B42A68;"">Tenant Specific {result.Type}s ({tenantCount}) :</h2>");
+            html.AppendLine($@"<br><h2 style=""color: #2C3539;"">Tenant Specific {result.Type}s ({tenantCount}) :</h2>");
             html.AppendLine(@"
         <table>
           <tr>
@@ -1245,7 +1245,7 @@ public static class HtmlReportWriter
 
         #region Create the Ignored Table
         int Number = 1;
-        html.AppendLine($@"<h2 style = ""color: #B42A68; margin-left:100px"">Ignored Objects :</h2>");
+        html.AppendLine($@"<h2 style = ""color: #2C3539; margin-left:100px"">Ignored Objects :</h2>");
         foreach (var item in ignoredObjects)
         {
             html.Append($@"<tr>
