@@ -1,11 +1,12 @@
 ﻿using Diffinity.HtmlHelper;
 using Diffinity.ProcHelper;
 using Diffinity.TableHelper;
-using Diffinity.ViewHelper;
 using Diffinity.UdtHelper;
+using Diffinity.ViewHelper;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using static Diffinity.DbComparer;
 
 
@@ -206,9 +207,11 @@ public class DbComparer : DbObjectHandler
 
             // Step 5 - Fetch definitions from both servers
             (string sourceBody, string destinationBody) = ProcedureFetcher.GetProcedureBody(sourceServer.connectionString, destinationServer.connectionString, schema, proc);
+            var marker = @"--\s*diffinity\s*:\s*client(?:\s*-\s*|\s+)specific\b";
             bool isTenantSpecific =
-               (!string.IsNullOrEmpty(sourceBody) && sourceBody.IndexOf("--client specific", StringComparison.OrdinalIgnoreCase) >= 0) ||
-               (!string.IsNullOrEmpty(destinationBody) && destinationBody.IndexOf("--client specific", StringComparison.OrdinalIgnoreCase) >= 0);
+                (!string.IsNullOrWhiteSpace(sourceBody) &&
+                 Regex.IsMatch(sourceBody, marker, RegexOptions.IgnoreCase | RegexOptions.Multiline))||(!string.IsNullOrWhiteSpace(destinationBody) &&
+                 Regex.IsMatch(destinationBody, marker, RegexOptions.IgnoreCase | RegexOptions.Multiline));
             bool areEqual = AreBodiesEqual(sourceBody, destinationBody);
             string change = areEqual ? "No changes" : "Changes detected";
             Serilog.Log.Information($"{schema}.{proc}: {change}");
@@ -338,9 +341,11 @@ public class DbComparer : DbObjectHandler
 
             // Step 5 - Fetch definitions from both servers
             (string sourceBody, string destinationBody) = ViewFetcher.GetViewBody(sourceServer.connectionString, destinationServer.connectionString, schema, view);
+            var marker = @"--\s*diffinity\s*:\s*client(?:\s*-\s*|\s+)specific\b";
             bool isTenantSpecific =
-               (!string.IsNullOrEmpty(sourceBody) && sourceBody.IndexOf("--client specific", StringComparison.OrdinalIgnoreCase) >= 0) ||
-               (!string.IsNullOrEmpty(destinationBody) && destinationBody.IndexOf("--client specific", StringComparison.OrdinalIgnoreCase) >= 0);
+                (!string.IsNullOrWhiteSpace(sourceBody) &&
+                 Regex.IsMatch(sourceBody, marker, RegexOptions.IgnoreCase | RegexOptions.Multiline)) || (!string.IsNullOrWhiteSpace(destinationBody) &&
+                 Regex.IsMatch(destinationBody, marker, RegexOptions.IgnoreCase | RegexOptions.Multiline));
             bool areEqual = AreBodiesEqual(sourceBody, destinationBody);
             string change = areEqual ? "No changes" : "Changes detected";
             Serilog.Log.Information($"{schema}.{view}: {change}");
