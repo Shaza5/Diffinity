@@ -538,10 +538,29 @@ public class DbComparer : DbObjectHandler
                 Directory.CreateDirectory(schemaFolder);
                 string sourcePath = Path.Combine(schemaFolder, sourceFile);
                 string destinationPath = Path.Combine(schemaFolder, destinationFile);
-                var sourceTableScript = HtmlReportWriter.CreateTableScript(schema, table, sourceInfo);
-                HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name} Table", HtmlReportWriter.PrintTableInfo(sourceInfo, allDifferences), returnPage, sourceTableScript);
 
-                var destTableScript = HtmlReportWriter.CreateTableScript(schema, table, destinationInfo);
+                // destination empty: use CREATE script
+                // both exist: use ALTER script
+                string sourceTableScript;
+                string destTableScript;
+
+                if (isDestinationEmpty)
+                {
+                    // New table - use CREATE script
+                    sourceTableScript = HtmlReportWriter.CreateTableScript(schema, table, sourceInfo);
+                    destTableScript = null; // destination is empty
+                }
+                else
+                {
+                    // Changed table - use ALTER scripts
+                    // Source page: ALTER to make source look like destination
+                    sourceTableScript = HtmlReportWriter.CreateAlterTableScript(schema, table, destinationInfo, sourceInfo);
+
+                    // Destination page: ALTER to make destination look like source
+                    destTableScript = HtmlReportWriter.CreateAlterTableScript(schema, table, sourceInfo, destinationInfo);
+                }
+
+                HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name} Table", HtmlReportWriter.PrintTableInfo(sourceInfo, allDifferences), returnPage, sourceTableScript);
                 HtmlReportWriter.WriteBodyHtml(destinationPath, $"{destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationInfo, allDifferences), returnPage, destTableScript);
 
                 if (!isDestinationEmpty && !areEqual)
