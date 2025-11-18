@@ -968,8 +968,19 @@ public static class HtmlReportWriter
         html.AppendLine($@"<h2 style = ""color: #2C3539;"">Changed {result.Type}s ({notEqualCount}) :</h2>");
         foreach (var item in changedObjects)
         {
-            string sourceCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo): item.SourceBody;
-            string destCopy = item.Type == "Table" ? CreateTableScript(item.schema, item.Name, item.DestinationTableInfo): item.DestinationBody;
+            // For tables: generate ALTER scripts for comparison
+            // For procs/views: use body as-is
+            string sourceCopy = item.SourceBody;
+            string destCopy = item.DestinationBody;
+
+            if (item.Type == "Table")
+            {
+                // Source copy button gets script to alter the SOURCE table (make it match destination)
+                sourceCopy = CreateAlterTableScript(item.schema, item.Name, item.DestinationTableInfo, item.SourceTableInfo);
+
+                // Destination copy button gets script to alter the DESTINATION table (make it match source)
+                destCopy = CreateAlterTableScript(item.schema, item.Name, item.SourceTableInfo, item.DestinationTableInfo);
+            }
 
             // Prepare file links
             string sourceColumn = item.SourceFile != null ? $@"<label class='pick'>
@@ -1117,13 +1128,14 @@ public static class HtmlReportWriter
             foreach (var item in tenantSpecific)
             {
                 // Build the copy payloads per type
-                string sourceCopy = item.Type == "Table"
-                    ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo)
-                    : item.SourceBody;
+                string sourceCopy = item.SourceBody;
+                string destCopy = item.DestinationBody;
 
-                string destCopy = item.Type == "Table"
-                    ? CreateTableScript(item.schema, item.Name, item.DestinationTableInfo)
-                    : item.DestinationBody;
+                if (item.Type == "Table")
+                {
+                    sourceCopy = CreateAlterTableScript(item.schema, item.Name, item.SourceTableInfo, item.DestinationTableInfo);
+                    destCopy = CreateAlterTableScript(item.schema, item.Name, item.DestinationTableInfo, item.SourceTableInfo);
+                }
 
                 string sourceColumn = !string.IsNullOrWhiteSpace(item.SourceFile) ? $@"<label class='pick'>
               <input type='checkbox' class='tnt-src'> <a href=""{item.SourceFile}"">View</a></label>
@@ -1441,23 +1453,37 @@ public static class HtmlReportWriter
         var html = new StringBuilder();
         html.AppendLine(BodyTemplate.Replace("{title}", title));
 
+        // Extract schema and table name from objectName (format: "schema.table")
+        string[] parts = objectName.Split('.');
+        string schema = parts.Length > 1 ? parts[0] : "dbo";
+        string table = parts.Length > 1 ? parts[1] : objectName;
+
+        // Generate ALTER scripts
+        // ALTER to make source look like destination
+        string sourceAlterScript = CreateAlterTableScript(schema, table, destinationTable, sourceTable);
+
+        // ALTER to make destination look like source
+        string destAlterScript = CreateAlterTableScript(schema, table, sourceTable, destinationTable);
+
         html.AppendLine($@"
-            <body>
-            <h1>{title} for {objectName}</h1>
-            <div class='side-by-side'>
-                <div class='db-block'>
-                    <span class='use'>{sourceName}</span>
-                    <div class='code-scroll' id='left'>
-                        <table>
-                            <tr><th>Column Name</th><th>Column Type</th><th>Is Nullable</th><th>Max Length</th><th>Is Primary Key</th><th>Is Foreign Key</th></tr>");
+        <body>
+        <h1>{title} for {objectName}</h1>
+        <div class='side-by-side'>
+            <div class='db-block'>
+                <span class='use'>{sourceName}</span>
+                <button class='copy-btn' onclick='copyTableScript(""sourceScript"")'>{CopyIcon}{CheckIcon}</button>
+                <div class='code-scroll' id='left'>
+                    <table>
+                        <tr><th>Column Name</th><th>Column Type</th><th>Is Nullable</th><th>Max Length</th><th>Is Primary Key</th><th>Is Foreign Key</th></tr>");
 
         var destTableHtml = new StringBuilder();
         destTableHtml.AppendLine($@"
-            <div class='db-block'>
-                <span class='use'>{destinationName}</span>
-                <div class='code-scroll' id='right'>
-                    <table>
-                        <tr><th>Column Name</th><th>Column Type</th><th>Is Nullable</th><th>Max Length</th><th>Is Primary Key</th><th>Is Foreign Key</th></tr>");
+        <div class='db-block'>
+            <span class='use'>{destinationName}</span>
+            <button class='copy-btn' onclick='copyTableScript(""destScript"")'>{CopyIcon}{CheckIcon}</button>
+            <div class='code-scroll' id='right'>
+                <table>
+                    <tr><th>Column Name</th><th>Column Type</th><th>Is Nullable</th><th>Max Length</th><th>Is Primary Key</th><th>Is Foreign Key</th></tr>");
 
         // Track remaining columns that are not yet output
         var sourceRemaining = new Queue<tableDto>(sourceTable);
@@ -1510,14 +1536,14 @@ public static class HtmlReportWriter
                 string fkCss = destCol != null && srcCol.isForeignKey != destCol.isForeignKey ? "difference" : "";
 
                 html.AppendLine($@"
-                <tr>
-                    <td class='{nameCss}'>{srcCol.columnName}</td>
-                    <td class='{typeCss}'>{srcCol.columnType}</td>
-                    <td class='{nullCss}'>{srcCol.isNullable}</td>
-                    <td class='{lenCss}'>{srcCol.maxLength}</td>
-                    <td class='{pkCss}'>{srcCol.isPrimaryKey}</td>
-                    <td class='{fkCss}'>{srcCol.isForeignKey}</td>
-                </tr>");
+            <tr>
+                <td class='{nameCss}'>{srcCol.columnName}</td>
+                <td class='{typeCss}'>{srcCol.columnType}</td>
+                <td class='{nullCss}'>{srcCol.isNullable}</td>
+                <td class='{lenCss}'>{srcCol.maxLength}</td>
+                <td class='{pkCss}'>{srcCol.isPrimaryKey}</td>
+                <td class='{fkCss}'>{srcCol.isForeignKey}</td>
+            </tr>");
             }
             else
             {
@@ -1539,14 +1565,14 @@ public static class HtmlReportWriter
                 string fkCss = srcCol != null && destCol.isForeignKey != srcCol.isForeignKey ? "difference" : "";
 
                 destTableHtml.AppendLine($@"
-                <tr>
-                    <td class='{nameCss}'>{destCol.columnName}</td>
-                    <td class='{typeCss}'>{destCol.columnType}</td>
-                    <td class='{nullCss}'>{destCol.isNullable}</td>
-                    <td class='{lenCss}'>{destCol.maxLength}</td>
-                    <td class='{pkCss}'>{destCol.isPrimaryKey}</td>
-                    <td class='{fkCss}'>{destCol.isForeignKey}</td>
-                </tr>");
+            <tr>
+                <td class='{nameCss}'>{destCol.columnName}</td>
+                <td class='{typeCss}'>{destCol.columnType}</td>
+                <td class='{nullCss}'>{destCol.isNullable}</td>
+                <td class='{lenCss}'>{destCol.maxLength}</td>
+                <td class='{pkCss}'>{destCol.isPrimaryKey}</td>
+                <td class='{fkCss}'>{destCol.isForeignKey}</td>
+            </tr>");
             }
             else
             {
@@ -1558,20 +1584,47 @@ public static class HtmlReportWriter
         destTableHtml.AppendLine("</table></div></div>");
         html.AppendLine(destTableHtml.ToString());
 
+        // Hidden spans containing the ALTER scripts
         html.AppendLine($@"
-            </div>
-            <a href='{returnPage}' class='return-btn'>Return to Summary</a>
-              <script>
-            const blocks = document.querySelectorAll('.code-scroll');
-            function syncScroll(src, tgt) {{ tgt.scrollTop = src.scrollTop; tgt.scrollLeft = src.scrollLeft; }}
-            if (blocks.length === 2) {{
-              let isSyncing = false;
-              blocks[0].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScroll(blocks[0], blocks[1]); isSyncing = false; }});
-              blocks[1].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScroll(blocks[1], blocks[0]); isSyncing = false; }});
-            }}
-            </script>
-            </body>
-            </html>");
+        </div>
+        
+        <!-- Hidden ALTER scripts for copying -->
+        <span id='sourceScript' style='display:none;'>{sourceAlterScript}</span>
+        <span id='destScript' style='display:none;'>{destAlterScript}</span>
+        
+        <a href='{returnPage}' class='return-btn'>Return to Summary</a>
+        
+        <script>
+        function copyTableScript(scriptId) {{
+            const scriptElement = document.getElementById(scriptId);
+            const text = scriptElement.textContent.trim();
+            
+            navigator.clipboard.writeText(text).then(() => {{
+                // Find the button that was clicked and show success
+                const buttons = document.querySelectorAll('.copy-btn');
+                buttons.forEach(btn => {{
+                    if (btn.getAttribute('onclick').includes(scriptId)) {{
+                        btn.classList.add('copied');
+                        setTimeout(() => btn.classList.remove('copied'), 2000);
+                    }}
+                }});
+            }}).catch(err => {{
+                console.error('Copy failed:', err);
+                alert('Failed to copy!');
+            }});
+        }}
+        
+        // Scroll sync
+        const blocks = document.querySelectorAll('.code-scroll');
+        function syncScroll(src, tgt) {{ tgt.scrollTop = src.scrollTop; tgt.scrollLeft = src.scrollLeft; }}
+        if (blocks.length === 2) {{
+            let isSyncing = false;
+            blocks[0].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScroll(blocks[0], blocks[1]); isSyncing = false; }});
+            blocks[1].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScroll(blocks[1], blocks[0]); isSyncing = false; }});
+        }}
+        </script>
+        </body>
+        </html>");
 
         File.WriteAllText(filePath, html.ToString());
     }
@@ -1635,6 +1688,163 @@ public static class HtmlReportWriter
         return sb.ToString();
     }
 
+    public static string CreateAlterTableScript(string schema, string table, List<tableDto> sourceColumns, List<tableDto> targetColumns)
+    {
+        if (sourceColumns == null || targetColumns == null)
+            return $"-- Cannot generate ALTER script for [{schema}].[{table}]";
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"-- ALTER script [{schema}].[{table}]");
+        sb.AppendLine();
+
+        // Create dictionaries for easy lookup
+        var sourceDict = sourceColumns.ToDictionary(c => c.columnName.ToLower(), c => c);
+        var targetDict = targetColumns.ToDictionary(c => c.columnName.ToLower(), c => c);
+
+        // Detect Primary Key differences
+        var sourcePKs = sourceColumns
+            .Where(c => "YES".Equals(c.isPrimaryKey, StringComparison.OrdinalIgnoreCase))
+            .Select(c => c.columnName.ToLower())
+            .ToHashSet();
+        var targetPKs = targetColumns
+            .Where(c => "YES".Equals(c.isPrimaryKey, StringComparison.OrdinalIgnoreCase))
+            .Select(c => c.columnName.ToLower())
+            .ToHashSet();
+
+        var toDrop = new List<tableDto>();
+        var toAdd = new List<tableDto>();
+        var toModify = new List<(tableDto source, tableDto target)>();
+
+        // Find columns to DROP (exist in target but not in source)
+        foreach (var targetCol in targetColumns)
+        {
+            if (!sourceDict.ContainsKey(targetCol.columnName.ToLower()))
+            {
+                toDrop.Add(targetCol);
+            }
+        }
+
+        // Find columns to ADD or MODIFY
+        foreach (var sourceCol in sourceColumns)
+        {
+            string key = sourceCol.columnName.ToLower();
+
+            if (!targetDict.ContainsKey(key))
+            {
+                // Column exists in source but not in target - ADD it
+                toAdd.Add(sourceCol);
+            }
+            else
+            {
+                // Column exists in both - check if modified
+                var targetCol = targetDict[key];
+
+                bool isModified =
+                    !string.Equals(sourceCol.columnType, targetCol.columnType, StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(sourceCol.isNullable, targetCol.isNullable, StringComparison.OrdinalIgnoreCase) ||
+                    !string.Equals(sourceCol.maxLength, targetCol.maxLength, StringComparison.OrdinalIgnoreCase);
+
+                if (isModified)
+                {
+                    toModify.Add((sourceCol, targetCol));
+                }
+            }
+        }
+
+        bool hasChanges = false;
+
+        // DROP columns
+        if (toDrop.Any())
+        {
+            foreach (var col in toDrop)
+            {
+                sb.AppendLine($"ALTER TABLE [{schema}].[{table}] DROP COLUMN [{col.columnName}];");
+                hasChanges = true;
+            }
+            sb.AppendLine();
+        }
+
+        // Handle Primary Key changes (Drop old, Add new)
+        if (!sourcePKs.SetEquals(targetPKs))
+        {
+            // If the target had a PK, drop it (assumes PK name is PK_{table})
+            if (targetPKs.Any())
+            {
+                sb.AppendLine($"-- Dropping old Primary Key");
+                sb.AppendLine($"ALTER TABLE [{schema}].[{table}] DROP CONSTRAINT [PK_{table}];");
+                hasChanges = true;
+            }
+
+            // If the source has a PK, add it
+            if (sourcePKs.Any())
+            {
+                sb.AppendLine($"-- Adding new Primary Key");
+                var pkCols = sourceColumns
+                    .Where(c => "YES".Equals(c.isPrimaryKey, StringComparison.OrdinalIgnoreCase))
+                    .Select(x => $"[{x.columnName}]");
+                sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ADD CONSTRAINT [PK_{table}] PRIMARY KEY ({string.Join(", ", pkCols)});");
+                hasChanges = true;
+            }
+            sb.AppendLine();
+        }
+
+        // MODIFY columns (ALTER COLUMN)
+        if (toModify.Any())
+        {
+            foreach (var (sourceCol, targetCol) in toModify)
+            {
+                var len = NormalizeLen(sourceCol.columnType, sourceCol.maxLength);
+                var nullability = (sourceCol.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
+                sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ALTER COLUMN [{sourceCol.columnName}] {sourceCol.columnType}{len} {nullability};");
+                hasChanges = true;
+            }
+            sb.AppendLine();
+        }
+
+        // ADD columns
+        if (toAdd.Any())
+        {
+            foreach (var col in toAdd)
+            {
+                var len = NormalizeLen(col.columnType, col.maxLength);
+                var nullability = (col.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
+                sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ADD [{col.columnName}] {col.columnType}{len} {nullability};");
+                hasChanges = true;
+            }
+        }
+
+        if (!hasChanges)
+        {
+            sb.AppendLine("-- No structural changes needed");
+        }
+
+        return sb.ToString();
+
+        // Local helper function
+        string NormalizeLen(string type, string lenStr)
+        {
+            if (string.IsNullOrWhiteSpace(lenStr)) return "";
+            if (!int.TryParse(lenStr, out var len)) return "";
+
+            if (type.Equals("nvarchar", StringComparison.OrdinalIgnoreCase) ||
+                type.Equals("nchar", StringComparison.OrdinalIgnoreCase))
+            {
+                if (len == -1) return "(MAX)";
+                return $"({len / 2})";
+            }
+
+            if (type.Equals("varchar", StringComparison.OrdinalIgnoreCase) ||
+                type.Equals("char", StringComparison.OrdinalIgnoreCase) ||
+                type.Equals("varbinary", StringComparison.OrdinalIgnoreCase) || 
+                type.Equals("binary", StringComparison.OrdinalIgnoreCase))
+            {
+                if (len == -1) return "(MAX)";
+                return $"({len})";
+            }
+
+            return "";
+        }
+    }
     /// <summary>
     /// Maps DiffPlex line change types to CSS class names.
     /// </summary>
