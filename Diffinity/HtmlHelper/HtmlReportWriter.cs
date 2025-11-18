@@ -256,7 +256,7 @@ public static class HtmlReportWriter
             box-shadow: 0 2px 6px rgba(236, 49, 127, 0.2);
         }
         .copy-selected:hover {
-              background-color: #778899;
+            background-color: #778899;
         }
         .pick { display:inline-flex; align-items:center; gap:8px; font-size:1rem; }
         .pick a { font-size:1rem; }           /* ensure same size as lone <a> */
@@ -284,6 +284,7 @@ public static class HtmlReportWriter
     <tr>
         <th></th>
         <th>{MetaData} Name</th>
+        <th></th>
         <th> <label class=""hdr""><input type=""checkbox"" id= {selectAllSrc}><span>{source} Original</span></label> </th>
         <th> <label class=""hdr""><input type=""checkbox"" id= {selectAllDst}><span>{destination} Original</span></label> </th>
         <th>Changes</th>
@@ -825,6 +826,7 @@ public static class HtmlReportWriter
                     <th>{result.Type} Name</th>
                     <th></th>
                     <th></th>
+                    <th></th>
                     <th class=""done-col""></th>
                 </tr>");
 
@@ -840,10 +842,12 @@ public static class HtmlReportWriter
                 string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
                 string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button><br>
                 <span class=""copy-target"" style=""display:none;"">{copyPayload}</span>";
+                string copyNameButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button><span class=""copy-target"" style=""display:none;"">{item.schema}.{item.Name}</span>";
 
                 newTable.Append($@"<tr data-key=""new|{result.Type}|{item.schema}.{item.Name}"">
-                                <td>{newCount}</td>
-                                <td>{item.schema}.{item.Name}</td>
+                        <td>{newCount}</td>
+                        <td  style=""width: 30%;text-align: left;"">{item.schema}.{item.Name}</td>
+                        <td>{copyNameButton}</td>
                                 <td>{sourceLink}</td>
                                 <td>{copyButton}</td>
                                 <td class=""done-col"">
@@ -896,6 +900,7 @@ public static class HtmlReportWriter
                     <th>{result.Type} Name</th>
                     <th></th>
                     <th></th>
+                    <th></th>
                     <th class=""done-col""></th>
                 </tr>");
 
@@ -906,7 +911,7 @@ public static class HtmlReportWriter
                 string copyPayload = item.Type == "Table"
                     ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo)
                     : item.SourceBody;
-
+                string copyNameButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button><span class=""copy-target"" style=""display:none;"">{item.schema}.{item.Name}</span>";
 
                 string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
                 string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button><br>
@@ -914,7 +919,8 @@ public static class HtmlReportWriter
 
                 unchangedTable.Append($@"<tr data-key=""Unchanged|{result.Type}|{item.schema}.{item.Name}"">
                                 <td>{newCount}</td>
-                                <td>{item.schema}.{item.Name}</td>
+                                <td style=""width: 30%;text-align: left;"">{item.schema}.{item.Name}</td>
+                                <td>{copyNameButton}</td>
                                 <td>{sourceLink}</td>
                                 <td>{copyButton}</td>
                                 <td class=""done-col"">
@@ -972,6 +978,7 @@ public static class HtmlReportWriter
             // For procs/views: use body as-is
             string sourceCopy = item.SourceBody;
             string destCopy = item.DestinationBody;
+            string copyNameButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button><span class=""copy-target"" style=""display:none;"">{item.schema}.{item.Name}</span>";
 
             if (item.Type == "Table")
             {
@@ -999,7 +1006,8 @@ public static class HtmlReportWriter
           
                 html.Append($@"<tr data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
                 <td>{Number}</td>
-                <td>{item.schema}.{item.Name}</td>
+                <td >{item.schema}.{item.Name}</td>
+                <td> {copyNameButton}</td>
                 <td>{sourceColumn}</td>
                 <td>{destinationColumn}</td>
                 <td>{differencesColumn}</td>
@@ -1119,6 +1127,7 @@ public static class HtmlReportWriter
           <tr>
             <th></th>
             <th>Name</th>
+            <th></th>
             <th><label class='hdr'><input type='checkbox' id='chk-tnt-src'><span>" + sourceServer.name + @" Original</span></label></th>
             <th><label class='hdr'><input type='checkbox' id='chk-tnt-dst'><span>" + destinationServer.name + @" Original</span></label></th>
             <th class='done-col'></th>
@@ -1137,6 +1146,7 @@ public static class HtmlReportWriter
                     destCopy = CreateAlterTableScript(item.schema, item.Name, item.DestinationTableInfo, item.SourceTableInfo);
                 }
 
+                string copyNameButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button><span class=""copy-target"" style=""display:none;"">{item.schema}.{item.Name}</span>";
                 string sourceColumn = !string.IsNullOrWhiteSpace(item.SourceFile) ? $@"<label class='pick'>
               <input type='checkbox' class='tnt-src'> <a href=""{item.SourceFile}"">View</a></label>
               <button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button>
@@ -1150,7 +1160,8 @@ public static class HtmlReportWriter
                 html.Append($@"
           <tr data-key=""tenant|{item.Type}|{item.schema}.{item.Name}"">
             <td>{tsNum}</td>
-            <td>{item.schema}.{item.Name}</td>
+            <td style=""width: 30%;text-align: left; "">{item.schema}.{item.Name}</td>
+            <td> {copyNameButton}</td>
             <td>{sourceColumn}</td>
             <td>{destinationColumn}</td>
             <td class=""done-col"">
