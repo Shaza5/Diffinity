@@ -5,9 +5,9 @@ internal class Program
 {
     static void Main(string[] args)
     {
-        var DEV002 = new DbServer("DEV002", Environment.GetEnvironmentVariable("dev2Cs"));
+        var DEV002 = new DbServer("DEV002", Environment.GetEnvironmentVariable("db1"));
         var Corewell = new DbServer("Corewell", Environment.GetEnvironmentVariable("connectionString"));
-        var CMH      = new DbServer("CMH", Environment.GetEnvironmentVariable("cmhCs"));
+        var CMH      = new DbServer("CMH", Environment.GetEnvironmentVariable("db2"));
 
         string IndexPage = DbComparer.Compare(DEV002,CMH);
         #region Optional

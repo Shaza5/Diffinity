@@ -18,6 +18,7 @@ namespace Diffinity.HtmlHelper;
 
 public static class HtmlReportWriter
 {
+    private static readonly object _colorizerLock = new object();
     private const string CopyIcon = @"<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""currentColor"" aria-hidden=""true"" class=""icon-copy""><path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/></svg>";
     private const string CheckIcon = @"<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""currentColor"" aria-hidden=""true"" class=""icon-check""><path d=""M9 16.2l-3.5-3.5 1.4-1.4L9 13.4l7.1-7.1 1.4 1.4L9 16.2z""/></svg>";
     private const string IndexTemplate = @"
@@ -1877,9 +1878,17 @@ public static class HtmlReportWriter
     static string HighlightSql(string sqlCode)
     {
         if (sqlCode == null) return null;
-        var colorizer = new CodeColorizer();
-        string coloredCode = colorizer.Colorize(sqlCode, Languages.Sql).Replace(@"<div style=""color:Black;background-color:White;""><pre>", "").Replace("</div>", "");
-        return coloredCode;
+
+        // ColorCode is not thread-safe during language compilation.
+        // We lock here to prevent "Key already added" exceptions in Parallel loops.
+        lock (_colorizerLock)
+        {
+            var colorizer = new CodeColorizer();
+            string coloredCode = colorizer.Colorize(sqlCode, Languages.Sql)
+                .Replace(@"<div style=""color:Black;background-color:White;""><pre>", "")
+                .Replace("</div>", "");
+            return coloredCode;
+        }
     }
     /// <summary>
     /// Write the nav section in the comparison summary pages
