@@ -18,6 +18,7 @@ namespace Diffinity.HtmlHelper;
 
 public static class HtmlReportWriter
 {
+    private static readonly object _colorizerLock = new object();
     private const string CopyIcon = @"<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""currentColor"" aria-hidden=""true"" class=""icon-copy""><path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/></svg>";
     private const string CheckIcon = @"<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""currentColor"" aria-hidden=""true"" class=""icon-check""><path d=""M9 16.2l-3.5-3.5 1.4-1.4L9 13.4l7.1-7.1 1.4 1.4L9 16.2z""/></svg>";
     private const string IndexTemplate = @"
@@ -284,7 +285,6 @@ public static class HtmlReportWriter
     <tr>
         <th></th>
         <th>{MetaData} Name</th>
-        <th></th>
         <th> <label class=""hdr""><input type=""checkbox"" id= {selectAllSrc}><span>{source} Original</span></label> </th>
         <th> <label class=""hdr""><input type=""checkbox"" id= {selectAllDst}><span>{destination} Original</span></label> </th>
         <th>Changes</th>
@@ -826,7 +826,6 @@ public static class HtmlReportWriter
                     <th>{result.Type} Name</th>
                     <th></th>
                     <th></th>
-                    <th></th>
                     <th class=""done-col""></th>
                 </tr>");
 
@@ -846,8 +845,7 @@ public static class HtmlReportWriter
 
                 newTable.Append($@"<tr data-key=""new|{result.Type}|{item.schema}.{item.Name}"">
                         <td>{newCount}</td>
-                        <td  style=""width: 30%;text-align: left;"">{item.schema}.{item.Name}</td>
-                        <td>{copyNameButton}</td>
+                        <td> {item.schema}.{item.Name}{copyNameButton}</td>
                                 <td>{sourceLink}</td>
                                 <td>{copyButton}</td>
                                 <td class=""done-col"">
@@ -900,7 +898,6 @@ public static class HtmlReportWriter
                     <th>{result.Type} Name</th>
                     <th></th>
                     <th></th>
-                    <th></th>
                     <th class=""done-col""></th>
                 </tr>");
 
@@ -919,8 +916,7 @@ public static class HtmlReportWriter
 
                 unchangedTable.Append($@"<tr data-key=""Unchanged|{result.Type}|{item.schema}.{item.Name}"">
                                 <td>{newCount}</td>
-                                <td style=""width: 30%;text-align: left;"">{item.schema}.{item.Name}</td>
-                                <td>{copyNameButton}</td>
+                                <td>{item.schema}.{item.Name} {copyNameButton}</td>
                                 <td>{sourceLink}</td>
                                 <td>{copyButton}</td>
                                 <td class=""done-col"">
@@ -1003,11 +999,10 @@ public static class HtmlReportWriter
             string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
             string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
-          
-                html.Append($@"<tr data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
+
+            html.Append($@"<tr data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
                 <td>{Number}</td>
-                <td >{item.schema}.{item.Name}</td>
-                <td> {copyNameButton}</td>
+                <td >{item.schema}.{item.Name} {copyNameButton}</td>
                 <td>{sourceColumn}</td>
                 <td>{destinationColumn}</td>
                 <td>{differencesColumn}</td>
@@ -1017,8 +1012,8 @@ public static class HtmlReportWriter
                            data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
                 </td>
                 </tr>");
-                Number++;
-            
+            Number++;
+
 
         }
         html.AppendLine(
@@ -1160,8 +1155,7 @@ public static class HtmlReportWriter
                 html.Append($@"
           <tr data-key=""tenant|{item.Type}|{item.schema}.{item.Name}"">
             <td>{tsNum}</td>
-            <td style=""width: 30%;text-align: left; "">{item.schema}.{item.Name}</td>
-            <td> {copyNameButton}</td>
+            <td>{item.schema}.{item.Name}  {copyNameButton}</td>
             <td>{sourceColumn}</td>
             <td>{destinationColumn}</td>
             <td class=""done-col"">
@@ -1469,36 +1463,34 @@ public static class HtmlReportWriter
         string schema = parts.Length > 1 ? parts[0] : "dbo";
         string table = parts.Length > 1 ? parts[1] : objectName;
 
-        // Generate ALTER scripts
-        // ALTER to make source look like destination
         string sourceAlterScript = CreateAlterTableScript(schema, table, destinationTable, sourceTable);
-
-        // ALTER to make destination look like source
         string destAlterScript = CreateAlterTableScript(schema, table, sourceTable, destinationTable);
 
         html.AppendLine($@"
-        <body>
-        <h1>{title} for {objectName}</h1>
-        <div class='side-by-side'>
-            <div class='db-block'>
-                <span class='use'>{sourceName}</span>
-                <button class='copy-btn' onclick='copyTableScript(""sourceScript"")'>{CopyIcon}{CheckIcon}</button>
-                <div class='code-scroll' id='left'>
-                    <table>
-                        <tr><th>Column Name</th><th>Column Type</th><th>Is Nullable</th><th>Max Length</th><th>Is Primary Key</th><th>Is Foreign Key</th></tr>");
+    <body>
+    <h1>{title} for {objectName}</h1>
+    <div class='side-by-side'>
+        <div class='db-block'>
+            <span class='use'>{sourceName}</span>
+            <button class='copy-btn' onclick='copyTableScript(""sourceScript"")'>{CopyIcon}{CheckIcon}</button>
+            <div class='code-scroll' id='left'>
+                <table>
+                    <tr><th style='width:50px;'></th><th>Column Name</th><th>Column Type</th><th>Is Nullable</th><th>Max Length</th><th>Is Primary Key</th><th>Is Foreign Key</th></tr>");
 
         var destTableHtml = new StringBuilder();
         destTableHtml.AppendLine($@"
-        <div class='db-block'>
-            <span class='use'>{destinationName}</span>
-            <button class='copy-btn' onclick='copyTableScript(""destScript"")'>{CopyIcon}{CheckIcon}</button>
-            <div class='code-scroll' id='right'>
-                <table>
-                    <tr><th>Column Name</th><th>Column Type</th><th>Is Nullable</th><th>Max Length</th><th>Is Primary Key</th><th>Is Foreign Key</th></tr>");
+    <div class='db-block'>
+        <span class='use'>{destinationName}</span>
+        <button class='copy-btn' onclick='copyTableScript(""destScript"")'>{CopyIcon}{CheckIcon}</button>
+        <div class='code-scroll' id='right'>
+            <table>
+                <tr><th style='width:50px;'></th><th>Column Name</th><th>Column Type</th><th>Is Nullable</th><th>Max Length</th><th>Is Primary Key</th><th>Is Foreign Key</th></tr>");
 
         // Track remaining columns that are not yet output
         var sourceRemaining = new Queue<tableDto>(sourceTable);
         var destRemaining = new Queue<tableDto>(destinationTable);
+
+        int rowNum = 0;
 
         // Output rows until both queues are empty
         while (sourceRemaining.Any() || destRemaining.Any())
@@ -1509,7 +1501,6 @@ public static class HtmlReportWriter
             bool srcHas = srcCol != null;
             bool destHas = destCol != null;
 
-            // If names match, we pop both; otherwise, pop whichever comes first in each table
             if (srcHas && destHas && srcCol.columnName.Equals(destCol.columnName, StringComparison.OrdinalIgnoreCase))
             {
                 sourceRemaining.Dequeue();
@@ -1527,18 +1518,16 @@ public static class HtmlReportWriter
             }
             else
             {
-                // Names do not match; align by order
                 srcCol = sourceRemaining.Any() ? sourceRemaining.Dequeue() : null;
                 destCol = destRemaining.Any() ? destRemaining.Dequeue() : null;
             }
 
-            // Build source row
             if (srcCol != null)
             {
                 string nameCss = destCol == null ? "source" :
                     (destCol.columnType != srcCol.columnType || destCol.isNullable != srcCol.isNullable ||
-                     destCol.maxLength != srcCol.maxLength || destCol.isPrimaryKey != srcCol.isPrimaryKey ||
-                     destCol.isForeignKey != srcCol.isForeignKey) ? "difference" : "";
+                        destCol.maxLength != srcCol.maxLength || destCol.isPrimaryKey != srcCol.isPrimaryKey ||
+                        destCol.isForeignKey != srcCol.isForeignKey) ? "difference" : "";
 
                 string typeCss = destCol != null && srcCol.columnType != destCol.columnType ? "difference" : "";
                 string nullCss = destCol != null && srcCol.isNullable != destCol.isNullable ? "difference" : "";
@@ -1546,28 +1535,48 @@ public static class HtmlReportWriter
                 string pkCss = destCol != null && srcCol.isPrimaryKey != destCol.isPrimaryKey ? "difference" : "";
                 string fkCss = destCol != null && srcCol.isForeignKey != destCol.isForeignKey ? "difference" : "";
 
+                // Generate script to make DESTINATION match SOURCE
+                string colAlter;
+                if (destCol != null)
+                {
+                    // Both exist: Alter Dest to match Source
+                    colAlter = GenerateColumnAlterScript(schema, table, destCol, srcCol, destinationTable, sourceTable);
+                }
+                else
+                {
+                    // Missing in Dest: Add to Dest
+                    var len = NormalizeLen(srcCol.columnType, srcCol.maxLength);
+                    var nullability = (srcCol.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
+                    colAlter = $@"-- Add column to [{schema}].[{table}]
+ALTER TABLE [{schema}].[{table}] ADD [{srcCol.columnName}] {srcCol.columnType}{len} {nullability};";
+                }
+
+                string copyBtn = string.IsNullOrWhiteSpace(colAlter) ? "" :
+                    $@"<button class='copy-btn-small' onclick='copyColumnScript(""src-col-{rowNum}"")'>{CopyIcon}{CheckIcon}</button>
+                <span id='src-col-{rowNum}' style='display:none;'>{colAlter}</span>";
+
                 html.AppendLine($@"
-            <tr>
-                <td class='{nameCss}'>{srcCol.columnName}</td>
-                <td class='{typeCss}'>{srcCol.columnType}</td>
-                <td class='{nullCss}'>{srcCol.isNullable}</td>
-                <td class='{lenCss}'>{srcCol.maxLength}</td>
-                <td class='{pkCss}'>{srcCol.isPrimaryKey}</td>
-                <td class='{fkCss}'>{srcCol.isForeignKey}</td>
-            </tr>");
+        <tr>
+            <td style='text-align:center; width:50px;'>{copyBtn}</td>
+            <td class='{nameCss}'>{srcCol.columnName}</td>
+            <td class='{typeCss}'>{srcCol.columnType}</td>
+            <td class='{nullCss}'>{srcCol.isNullable}</td>
+            <td class='{lenCss}'>{srcCol.maxLength}</td>
+            <td class='{pkCss}'>{srcCol.isPrimaryKey}</td>
+            <td class='{fkCss}'>{srcCol.isForeignKey}</td>
+        </tr>");
             }
             else
             {
-                html.AppendLine("<tr><td colspan='6' class='missing'>&nbsp;</td></tr>");
+                html.AppendLine("<tr><td></td><td colspan='6' class='missing'>&nbsp;</td></tr>");
             }
 
-            // Build destination row
             if (destCol != null)
             {
                 string nameCss = srcCol == null ? "destination" :
                     (srcCol.columnType != destCol.columnType || srcCol.isNullable != destCol.isNullable ||
-                     srcCol.maxLength != destCol.maxLength || srcCol.isPrimaryKey != destCol.isPrimaryKey ||
-                     srcCol.isForeignKey != destCol.isForeignKey) ? "difference" : "";
+                        srcCol.maxLength != destCol.maxLength || srcCol.isPrimaryKey != destCol.isPrimaryKey ||
+                        srcCol.isForeignKey != destCol.isForeignKey) ? "difference" : "";
 
                 string typeCss = srcCol != null && destCol.columnType != srcCol.columnType ? "difference" : "";
                 string nullCss = srcCol != null && destCol.isNullable != srcCol.isNullable ? "difference" : "";
@@ -1575,67 +1584,148 @@ public static class HtmlReportWriter
                 string pkCss = srcCol != null && destCol.isPrimaryKey != srcCol.isPrimaryKey ? "difference" : "";
                 string fkCss = srcCol != null && destCol.isForeignKey != srcCol.isForeignKey ? "difference" : "";
 
+                // Generate script to make SOURCE match DESTINATION
+                string colAlter;
+                if (srcCol != null)
+                {
+                    // Both exist: Alter Source to match Dest
+                    colAlter = GenerateColumnAlterScript(schema, table, srcCol, destCol, sourceTable, destinationTable);
+                }
+                else
+                {
+                    // Missing in Source: Add to Source
+                    var len = NormalizeLen(destCol.columnType, destCol.maxLength);
+                    var nullability = (destCol.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
+                    colAlter = $@"-- Add column to [{schema}].[{table}]
+ALTER TABLE [{schema}].[{table}] ADD [{destCol.columnName}] {destCol.columnType}{len} {nullability};";
+                }
+
+                string copyBtn = string.IsNullOrWhiteSpace(colAlter) ? "" :
+                    $@"<button class='copy-btn-small' onclick='copyColumnScript(""dst-col-{rowNum}"")'>{CopyIcon}{CheckIcon}</button>
+                <span id='dst-col-{rowNum}' style='display:none;'>{colAlter}</span>";
+
                 destTableHtml.AppendLine($@"
-            <tr>
-                <td class='{nameCss}'>{destCol.columnName}</td>
-                <td class='{typeCss}'>{destCol.columnType}</td>
-                <td class='{nullCss}'>{destCol.isNullable}</td>
-                <td class='{lenCss}'>{destCol.maxLength}</td>
-                <td class='{pkCss}'>{destCol.isPrimaryKey}</td>
-                <td class='{fkCss}'>{destCol.isForeignKey}</td>
-            </tr>");
+        <tr>
+            <td style='text-align:center; width:50px;'>{copyBtn}</td>
+            <td class='{nameCss}'>{destCol.columnName}</td>
+            <td class='{typeCss}'>{destCol.columnType}</td>
+            <td class='{nullCss}'>{destCol.isNullable}</td>
+            <td class='{lenCss}'>{destCol.maxLength}</td>
+            <td class='{pkCss}'>{destCol.isPrimaryKey}</td>
+            <td class='{fkCss}'>{destCol.isForeignKey}</td>
+        </tr>");
             }
             else
             {
-                destTableHtml.AppendLine("<tr><td colspan='6' class='missing'>&nbsp;</td></tr>");
+                // Column missing in destination
+                if (srcCol != null)
+                {
+                    // Make Source like Dest (Dest is missing it): Drop from Source
+                    string dropColScript = $@"-- Drop column from [{schema}].[{table}]
+ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
+
+                    string copyBtn = $@"<button class='copy-btn-small' onclick='copyColumnScript(""dst-col-{rowNum}"")'>{CopyIcon}{CheckIcon}</button>
+                <span id='dst-col-{rowNum}' style='display:none;'>{dropColScript}</span>";
+
+                    destTableHtml.AppendLine($@"<tr><td style='text-align:center; width:50px;'>{copyBtn}</td><td colspan='6' class='missing'>&nbsp;</td></tr>");
+                }
+                else
+                {
+                    destTableHtml.AppendLine("<tr><td></td><td colspan='6' class='missing'>&nbsp;</td></tr>");
+                }
             }
+
+            rowNum++;
         }
 
         html.AppendLine("</table></div></div>");
         destTableHtml.AppendLine("</table></div></div>");
         html.AppendLine(destTableHtml.ToString());
 
-        // Hidden spans containing the ALTER scripts
+        // Hidden spans containing the full table ALTER scripts
         html.AppendLine($@"
-        </div>
+    </div>
+    
+    <span id='sourceScript' style='display:none;'>{sourceAlterScript}</span>
+    <span id='destScript' style='display:none;'>{destAlterScript}</span>
+    
+    <a href='{returnPage}' class='return-btn'>Return to Summary</a>
+    
+    <style>
+    .copy-btn-small {{
+        background-color: transparent;
+        color: #555; 
+        border: none;
+        font-size: 14px;
+        padding: 4px 6px;
+        border-radius: 4px;
+        cursor: pointer;
+    }}
+    .copy-btn-small:hover {{
+        background-color: #f0f0f0; 
+        color: #000; 
+    }}
+    .copy-btn-small .icon-check {{
+        display: none;
+    }}
+    .copy-btn-small.copied .icon-check {{
+        display: inline-block;
+    }}
+    .copy-btn-small.copied .icon-copy {{
+        display: none;
+    }}
+    </style>
+    
+    <script>
+    // Copy full table script (header buttons)
+    function copyTableScript(scriptId) {{
+        const scriptElement = document.getElementById(scriptId);
+        const text = scriptElement.textContent.trim();
         
-        <!-- Hidden ALTER scripts for copying -->
-        <span id='sourceScript' style='display:none;'>{sourceAlterScript}</span>
-        <span id='destScript' style='display:none;'>{destAlterScript}</span>
-        
-        <a href='{returnPage}' class='return-btn'>Return to Summary</a>
-        
-        <script>
-        function copyTableScript(scriptId) {{
-            const scriptElement = document.getElementById(scriptId);
-            const text = scriptElement.textContent.trim();
-            
-            navigator.clipboard.writeText(text).then(() => {{
-                // Find the button that was clicked and show success
-                const buttons = document.querySelectorAll('.copy-btn');
-                buttons.forEach(btn => {{
-                    if (btn.getAttribute('onclick').includes(scriptId)) {{
-                        btn.classList.add('copied');
-                        setTimeout(() => btn.classList.remove('copied'), 2000);
-                    }}
-                }});
-            }}).catch(err => {{
-                console.error('Copy failed:', err);
-                alert('Failed to copy!');
+        navigator.clipboard.writeText(text).then(() => {{
+            const buttons = document.querySelectorAll('.copy-btn');
+            buttons.forEach(btn => {{
+                if (btn.getAttribute('onclick').includes(scriptId)) {{
+                    btn.classList.add('copied');
+                    setTimeout(() => btn.classList.remove('copied'), 2000);
+                }}
             }});
-        }}
+        }}).catch(err => {{
+            console.error('Copy failed:', err);
+            alert('Failed to copy!');
+        }});
+    }}
+    
+    // Copy individual column script
+    function copyColumnScript(scriptId) {{
+        const scriptElement = document.getElementById(scriptId);
+        const text = scriptElement.textContent.trim();
         
-        // Scroll sync
-        const blocks = document.querySelectorAll('.code-scroll');
-        function syncScroll(src, tgt) {{ tgt.scrollTop = src.scrollTop; tgt.scrollLeft = src.scrollLeft; }}
-        if (blocks.length === 2) {{
-            let isSyncing = false;
-            blocks[0].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScroll(blocks[0], blocks[1]); isSyncing = false; }});
-            blocks[1].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScroll(blocks[1], blocks[0]); isSyncing = false; }});
-        }}
-        </script>
-        </body>
-        </html>");
+        navigator.clipboard.writeText(text).then(() => {{
+            const buttons = document.querySelectorAll('.copy-btn-small');
+            buttons.forEach(btn => {{
+                if (btn.getAttribute('onclick').includes(scriptId)) {{
+                    btn.classList.add('copied');
+                    setTimeout(() => btn.classList.remove('copied'), 2000);
+                }}
+            }});
+        }}).catch(err => {{
+            console.error('Copy failed:', err);
+            alert('Failed to copy!');
+        }});
+    }}
+    
+    // Scroll sync
+    const blocks = document.querySelectorAll('.code-scroll');
+    function syncScroll(src, tgt) {{ tgt.scrollTop = src.scrollTop; tgt.scrollLeft = src.scrollLeft; }}
+    if (blocks.length === 2) {{
+        let isSyncing = false;
+        blocks[0].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScroll(blocks[0], blocks[1]); isSyncing = false; }});
+        blocks[1].addEventListener('scroll', () => {{ if(isSyncing) return; isSyncing = true; syncScroll(blocks[1], blocks[0]); isSyncing = false; }});
+    }}
+    </script>
+    </body>
+    </html>");
 
         File.WriteAllText(filePath, html.ToString());
     }
@@ -1643,36 +1733,38 @@ public static class HtmlReportWriter
 
     #region Helpers
 
+    /// <summary>
+    /// Shared helper to normalize column length strings (e.g., handling MAX and nvarchar division).
+    /// </summary>
+    private static string NormalizeLen(string type, string lenStr)
+    {
+        if (string.IsNullOrWhiteSpace(lenStr)) return "";
+        if (!int.TryParse(lenStr, out var len)) return "";
 
+        // nvarchar/nchar length in sys.columns is bytes. Convert to characters.
+        if (type.Equals("nvarchar", StringComparison.OrdinalIgnoreCase) ||
+            type.Equals("nchar", StringComparison.OrdinalIgnoreCase))
+        {
+            if (len == -1) return "(MAX)";
+            return $"({len / 2})";
+        }
+
+        // varchar/char/binary/varbinary length is bytes already.
+        if (type.Equals("varchar", StringComparison.OrdinalIgnoreCase) ||
+            type.Equals("char", StringComparison.OrdinalIgnoreCase) ||
+            type.Equals("varbinary", StringComparison.OrdinalIgnoreCase) ||
+            type.Equals("binary", StringComparison.OrdinalIgnoreCase))
+        {
+            if (len == -1) return "(MAX)";
+            return $"({len})";
+        }
+
+        return "";
+    }
     public static string CreateTableScript(string schema, string table, List<tableDto> cols)
     {
         if (cols == null || cols.Count == 0)
             return $"-- Table [{schema}].[{table}] has no columns?";
-
-        string NormalizeLen(string type, string lenStr)
-        {
-            if (string.IsNullOrWhiteSpace(lenStr)) return "";
-            if (!int.TryParse(lenStr, out var len)) return "";
-
-            // nvarchar/nchar length in sys.columns is bytes. Convert to characters.
-            if (type.Equals("nvarchar", StringComparison.OrdinalIgnoreCase) ||
-                type.Equals("nchar", StringComparison.OrdinalIgnoreCase))
-            {
-                if (len == -1) return "(MAX)";
-                return $"({len / 2})";
-            }
-
-            // varchar/char length is bytes already.
-            if (type.Equals("varchar", StringComparison.OrdinalIgnoreCase) ||
-                type.Equals("char", StringComparison.OrdinalIgnoreCase))
-            {
-                if (len == -1) return "(MAX)";
-                return $"({len})";
-            }
-
-            // other types: no (length) suffix
-            return "";
-        }
 
         var sb = new StringBuilder();
         sb.AppendLine($"CREATE TABLE [{schema}].[{table}] (");
@@ -1830,32 +1922,60 @@ public static class HtmlReportWriter
         }
 
         return sb.ToString();
-
-        // Local helper function
-        string NormalizeLen(string type, string lenStr)
-        {
-            if (string.IsNullOrWhiteSpace(lenStr)) return "";
-            if (!int.TryParse(lenStr, out var len)) return "";
-
-            if (type.Equals("nvarchar", StringComparison.OrdinalIgnoreCase) ||
-                type.Equals("nchar", StringComparison.OrdinalIgnoreCase))
-            {
-                if (len == -1) return "(MAX)";
-                return $"({len / 2})";
-            }
-
-            if (type.Equals("varchar", StringComparison.OrdinalIgnoreCase) ||
-                type.Equals("char", StringComparison.OrdinalIgnoreCase) ||
-                type.Equals("varbinary", StringComparison.OrdinalIgnoreCase) || 
-                type.Equals("binary", StringComparison.OrdinalIgnoreCase))
-            {
-                if (len == -1) return "(MAX)";
-                return $"({len})";
-            }
-
-            return "";
-        }
     }
+
+
+    /// <summary>
+    /// Generates an ALTER statement for a single column
+    /// </summary>
+    private static string GenerateColumnAlterScript(string schema, string table, tableDto currentCol, tableDto targetCol, List<tableDto> currentTable, List<tableDto> targetTable)
+    {
+        if (currentCol == null) return "";
+
+        var sb = new StringBuilder();
+        string key = currentCol.columnName.ToLower();
+
+        // Check if column exists in target
+        bool existsInTarget = targetTable?.Any(c => c.columnName.Equals(currentCol.columnName, StringComparison.OrdinalIgnoreCase)) == true;
+
+        if (!existsInTarget)
+        {
+            // Column exists in current but not in target: DROP COLUMN
+            sb.AppendLine($"-- Drop column from [{schema}].[{table}]");
+            sb.AppendLine($"ALTER TABLE [{schema}].[{table}] DROP COLUMN [{currentCol.columnName}];");
+        }
+        else if (targetCol != null)
+        {
+            // Both have the column - check if modified
+            bool isModified =
+                !string.Equals(currentCol.columnType, targetCol.columnType, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(currentCol.isNullable, targetCol.isNullable, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(currentCol.maxLength, targetCol.maxLength, StringComparison.OrdinalIgnoreCase);
+
+            if (isModified)
+            {
+                // ALTER COLUMN to match target
+                var len = NormalizeLen(targetCol.columnType, targetCol.maxLength);
+                var nullability = (targetCol.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
+                sb.AppendLine($"-- Alter column [{currentCol.columnName}] in [{schema}].[{table}]");
+                sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ALTER COLUMN [{targetCol.columnName}] {targetCol.columnType}{len} {nullability};");
+            }
+        }
+
+        // Check if this column exists in current but not in target: ADD COLUMN
+        bool existsInCurrent = currentTable?.Any(c => c.columnName.Equals(currentCol.columnName, StringComparison.OrdinalIgnoreCase)) == true;
+        if (existsInTarget && !existsInCurrent)
+        {
+            // ADD COLUMN
+            var len = NormalizeLen(currentCol.columnType, currentCol.maxLength);
+            var nullability = (currentCol.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
+            sb.AppendLine($"-- Add column to [{schema}].[{table}]");
+            sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ADD [{currentCol.columnName}] {currentCol.columnType}{len} {nullability};");
+        }
+
+        return sb.ToString();
+    }
+
     /// <summary>
     /// Maps DiffPlex line change types to CSS class names.
     /// </summary>
@@ -1877,9 +1997,17 @@ public static class HtmlReportWriter
     static string HighlightSql(string sqlCode)
     {
         if (sqlCode == null) return null;
-        var colorizer = new CodeColorizer();
-        string coloredCode = colorizer.Colorize(sqlCode, Languages.Sql).Replace(@"<div style=""color:Black;background-color:White;""><pre>", "").Replace("</div>", "");
-        return coloredCode;
+
+        // ColorCode is not thread-safe during language compilation.
+        // We lock here to prevent "Key already added" exceptions in Parallel loops.
+        lock (_colorizerLock)
+        {
+            var colorizer = new CodeColorizer();
+            string coloredCode = colorizer.Colorize(sqlCode, Languages.Sql)
+                .Replace(@"<div style=""color:Black;background-color:White;""><pre>", "")
+                .Replace("</div>", "");
+            return coloredCode;
+        }
     }
     /// <summary>
     /// Write the nav section in the comparison summary pages
