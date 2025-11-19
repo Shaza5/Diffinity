@@ -174,6 +174,8 @@ public class DbObjectHandler
         public List<tableDto> SourceTableInfo { get; set; }
         public List<tableDto> DestinationTableInfo { get; set; }
         public string? NewFile { get; set; } // null if not altered
+        public List<ForeignKeyDto> SourceForeignKeys { get; set; }
+        public List<ForeignKeyDto> DestinationForeignKeys { get; set; }
     }
 
 }
