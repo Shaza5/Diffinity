@@ -548,15 +548,18 @@ public class DbComparer : DbObjectHandler
                 {
                     // New table - use CREATE script
                     sourceTableScript = HtmlReportWriter.CreateTableScript(schema, table, sourceInfo);
-                    destTableScript = null; // destination is empty
+                    destTableScript = null;
+                }
+                else if (areEqual) 
+                {
+                    // Unchanged table - use CREATE script 
+                    sourceTableScript = HtmlReportWriter.CreateTableScript(schema, table, sourceInfo);
+                    destTableScript = HtmlReportWriter.CreateTableScript(schema, table, destinationInfo);
                 }
                 else
                 {
                     // Changed table - use ALTER scripts
-                    // Source page: ALTER to make source look like destination
                     sourceTableScript = HtmlReportWriter.CreateAlterTableScript(schema, table, destinationInfo, sourceInfo);
-
-                    // Destination page: ALTER to make destination look like source
                     destTableScript = HtmlReportWriter.CreateAlterTableScript(schema, table, sourceInfo, destinationInfo);
                 }
 
