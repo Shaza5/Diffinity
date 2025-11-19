@@ -285,7 +285,6 @@ public static class HtmlReportWriter
     <tr>
         <th></th>
         <th>{MetaData} Name</th>
-        <th></th>
         <th> <label class=""hdr""><input type=""checkbox"" id= {selectAllSrc}><span>{source} Original</span></label> </th>
         <th> <label class=""hdr""><input type=""checkbox"" id= {selectAllDst}><span>{destination} Original</span></label> </th>
         <th>Changes</th>
@@ -827,7 +826,6 @@ public static class HtmlReportWriter
                     <th>{result.Type} Name</th>
                     <th></th>
                     <th></th>
-                    <th></th>
                     <th class=""done-col""></th>
                 </tr>");
 
@@ -847,8 +845,7 @@ public static class HtmlReportWriter
 
                 newTable.Append($@"<tr data-key=""new|{result.Type}|{item.schema}.{item.Name}"">
                         <td>{newCount}</td>
-                        <td  style=""width: 30%;text-align: left;"">{item.schema}.{item.Name}</td>
-                        <td>{copyNameButton}</td>
+                        <td> {item.schema}.{item.Name}{copyNameButton}</td>
                                 <td>{sourceLink}</td>
                                 <td>{copyButton}</td>
                                 <td class=""done-col"">
@@ -901,7 +898,6 @@ public static class HtmlReportWriter
                     <th>{result.Type} Name</th>
                     <th></th>
                     <th></th>
-                    <th></th>
                     <th class=""done-col""></th>
                 </tr>");
 
@@ -920,8 +916,7 @@ public static class HtmlReportWriter
 
                 unchangedTable.Append($@"<tr data-key=""Unchanged|{result.Type}|{item.schema}.{item.Name}"">
                                 <td>{newCount}</td>
-                                <td style=""width: 30%;text-align: left;"">{item.schema}.{item.Name}</td>
-                                <td>{copyNameButton}</td>
+                                <td>{item.schema}.{item.Name} {copyNameButton}</td>
                                 <td>{sourceLink}</td>
                                 <td>{copyButton}</td>
                                 <td class=""done-col"">
@@ -1004,11 +999,10 @@ public static class HtmlReportWriter
             string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
             string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
-          
-                html.Append($@"<tr data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
+
+            html.Append($@"<tr data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
                 <td>{Number}</td>
-                <td >{item.schema}.{item.Name}</td>
-                <td> {copyNameButton}</td>
+                <td >{item.schema}.{item.Name} {copyNameButton}</td>
                 <td>{sourceColumn}</td>
                 <td>{destinationColumn}</td>
                 <td>{differencesColumn}</td>
@@ -1018,8 +1012,8 @@ public static class HtmlReportWriter
                            data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
                 </td>
                 </tr>");
-                Number++;
-            
+            Number++;
+
 
         }
         html.AppendLine(
@@ -1161,8 +1155,7 @@ public static class HtmlReportWriter
                 html.Append($@"
           <tr data-key=""tenant|{item.Type}|{item.schema}.{item.Name}"">
             <td>{tsNum}</td>
-            <td style=""width: 30%;text-align: left; "">{item.schema}.{item.Name}</td>
-            <td> {copyNameButton}</td>
+            <td>{item.schema}.{item.Name}  {copyNameButton}</td>
             <td>{sourceColumn}</td>
             <td>{destinationColumn}</td>
             <td class=""done-col"">
@@ -1847,7 +1840,7 @@ public static class HtmlReportWriter
 
             if (type.Equals("varchar", StringComparison.OrdinalIgnoreCase) ||
                 type.Equals("char", StringComparison.OrdinalIgnoreCase) ||
-                type.Equals("varbinary", StringComparison.OrdinalIgnoreCase) || 
+                type.Equals("varbinary", StringComparison.OrdinalIgnoreCase) ||
                 type.Equals("binary", StringComparison.OrdinalIgnoreCase))
             {
                 if (len == -1) return "(MAX)";
