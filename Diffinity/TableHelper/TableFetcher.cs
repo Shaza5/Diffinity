@@ -45,6 +45,26 @@ public class TableFetcher
       AND s.name = @schemaName
     ORDER BY c.column_id;
 ";
+    private const string GetForeignKeysQuery = @"
+    SELECT 
+        fk.name AS ConstraintName,
+        SCHEMA_NAME(ref_t.schema_id) AS ReferencedSchema,
+        ref_t.name AS ReferencedTable,
+        ref_c.name AS ReferencedColumn,
+        parent_c.name AS ColumnName
+    FROM sys.foreign_keys fk
+    INNER JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
+    INNER JOIN sys.tables t ON fk.parent_object_id = t.object_id
+    INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+    INNER JOIN sys.columns parent_c ON fkc.parent_object_id = parent_c.object_id 
+        AND fkc.parent_column_id = parent_c.column_id
+    INNER JOIN sys.tables ref_t ON fkc.referenced_object_id = ref_t.object_id
+    INNER JOIN sys.columns ref_c ON fkc.referenced_object_id = ref_c.object_id 
+        AND fkc.referenced_column_id = ref_c.column_id
+    WHERE t.name = @tableName
+      AND s.name = @schemaName
+    ORDER BY fk.name, fkc.constraint_column_id;
+";
     /// <summary>
     /// Retrieves the names of all tables from the source database.
     /// </summary>
@@ -62,14 +82,20 @@ public class TableFetcher
     /// </summary>
     /// <param name="fullTableName"></param>
     /// <returns></returns>
-    public static (List<tableDto> sourceTableColumns,List<tableDto> destinationTableColumns) GetTableInfo(string sourceConnectionString, string destinationConnectionString, string schema, string TableName)
+    public static (List<tableDto> sourceTableColumns, List<tableDto> destinationTableColumns,
+                   List<ForeignKeyDto> sourceForeignKeys, List<ForeignKeyDto> destinationForeignKeys)
+        GetTableInfo(string sourceConnectionString, string destinationConnectionString, string schema, string TableName)
     {
         using SqlConnection sourceConnection = new SqlConnection(sourceConnectionString);
         using SqlConnection destinationConnection = new SqlConnection(destinationConnectionString);
+
         var sourceInfo = sourceConnection.Query<tableDto>(GetTableInfoQuery, new { tableName = TableName, schemaName = schema }).ToList();
         var destinationInfo = destinationConnection.Query<tableDto>(GetTableInfoQuery, new { tableName = TableName, schemaName = schema }).ToList();
-        return (sourceInfo, destinationInfo);
 
+        var sourceFKs = sourceConnection.Query<ForeignKeyDto>(GetForeignKeysQuery, new { tableName = TableName, schemaName = schema }).ToList();
+        var destinationFKs = destinationConnection.Query<ForeignKeyDto>(GetForeignKeysQuery, new { tableName = TableName, schemaName = schema }).ToList();
+
+        return (sourceInfo, destinationInfo, sourceFKs, destinationFKs);
     }
 }
 public class tableDto
@@ -80,4 +106,13 @@ public class tableDto
     public string maxLength { get; set; }
     public string isPrimaryKey { get; set; }
     public string isForeignKey { get; set; }
+}
+
+public class ForeignKeyDto
+{
+    public string ConstraintName { get; set; }
+    public string ReferencedSchema { get; set; }
+    public string ReferencedTable { get; set; }
+    public string ReferencedColumn { get; set; }
+    public string ColumnName { get; set; }
 }

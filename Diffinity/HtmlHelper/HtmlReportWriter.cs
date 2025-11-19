@@ -862,9 +862,8 @@ public static class HtmlReportWriter
             {
 
                 string copyPayload = item.Type == "Table"
-                    ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo)
+                    ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo, item.SourceForeignKeys)
                     : item.SourceBody;
-
 
                 string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
                 string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button><br>
@@ -931,10 +930,10 @@ public static class HtmlReportWriter
             int newCount = 1;
             foreach (var item in unchangedObjects)
             {
-
                 string copyPayload = item.Type == "Table"
-                    ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo)
+                    ? CreateTableScript(item.schema, item.Name, item.SourceTableInfo, item.SourceForeignKeys)
                     : item.SourceBody;
+
                 string copyNameButton = $@"<button class=""name-copy-btn"" onclick=""copyPane(this)"">{SmallCopyIcon}{SmallCheckIcon}</button><span class=""copy-target"" style=""display:none;"">{item.schema}.{item.Name}</span>";
                 string sourceLink = $@"<a href=""{item.SourceFile}"">View</a";
                 string copyButton = $@"<button class=""copy-btn"" onclick=""copyPane(this)"">{CopyIcon}{CheckIcon}</button><br>
@@ -1785,7 +1784,7 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
 
         return "";
     }
-    public static string CreateTableScript(string schema, string table, List<tableDto> cols)
+    public static string CreateTableScript(string schema, string table, List<tableDto> cols, List<ForeignKeyDto> foreignKeys = null)
     {
         if (cols == null || cols.Count == 0)
             return $"-- Table [{schema}].[{table}] has no columns?";
@@ -1802,13 +1801,31 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
             sb.AppendLine($"    [{c.columnName}] {c.columnType}{len} {nullability}{comma}");
         }
 
-        // Add a PK constraint if we have PK columns (single or composite)
+        // Add PK constraint
         var pkCols = cols.Where(x => x.isPrimaryKey?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true)
                          .Select(x => $"[{x.columnName}]")
                          .ToList();
         if (pkCols.Any())
         {
             sb.AppendLine($",   CONSTRAINT [PK_{table}] PRIMARY KEY ({string.Join(", ", pkCols)})");
+        }
+
+        // Add FK constraints
+        if (foreignKeys != null && foreignKeys.Any())
+        {
+            // Group by constraint name to handle composite foreign keys
+            var fkGroups = foreignKeys.GroupBy(fk => fk.ConstraintName);
+
+            foreach (var fkGroup in fkGroups)
+            {
+                var fkList = fkGroup.ToList();
+                var fkColumns = string.Join(", ", fkList.Select(fk => $"[{fk.ColumnName}]"));
+                var refColumns = string.Join(", ", fkList.Select(fk => $"[{fk.ReferencedColumn}]"));
+                var refSchema = fkList.First().ReferencedSchema;
+                var refTable = fkList.First().ReferencedTable;
+
+                sb.AppendLine($",   CONSTRAINT [{fkGroup.Key}] FOREIGN KEY ({fkColumns}) REFERENCES [{refSchema}].[{refTable}]({refColumns})");
+            }
         }
 
         sb.AppendLine(");");

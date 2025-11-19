@@ -474,9 +474,9 @@ public class DbComparer : DbObjectHandler
 
             // Step 5 - Fetch table column info
             List<string> allDifferences = new List<string>();
-            (List<tableDto> sourceInfo, List<tableDto> destinationInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, schema, table);
-            bool isDestinationEmpty = destinationInfo.IsNullOrEmpty();
-
+            (List<tableDto> sourceInfo, List<tableDto> destinationInfo,
+             List<ForeignKeyDto> sourceFKs, List<ForeignKeyDto> destFKs) =
+                TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, schema, table); bool isDestinationEmpty = destinationInfo.IsNullOrEmpty();
             int sourceColumnCount = sourceInfo.Count;
             int destinationColumnCount = destinationInfo.Count;
             int minCount = Math.Min(sourceColumnCount, destinationColumnCount);
@@ -546,15 +546,13 @@ public class DbComparer : DbObjectHandler
 
                 if (isDestinationEmpty)
                 {
-                    // New table - use CREATE script
-                    sourceTableScript = HtmlReportWriter.CreateTableScript(schema, table, sourceInfo);
+                    sourceTableScript = HtmlReportWriter.CreateTableScript(schema, table, sourceInfo, sourceFKs);
                     destTableScript = null;
                 }
-                else if (areEqual) 
+                else if (areEqual)
                 {
-                    // Unchanged table - use CREATE script 
-                    sourceTableScript = HtmlReportWriter.CreateTableScript(schema, table, sourceInfo);
-                    destTableScript = HtmlReportWriter.CreateTableScript(schema, table, destinationInfo);
+                    sourceTableScript = HtmlReportWriter.CreateTableScript(schema, table, sourceInfo, sourceFKs);
+                    destTableScript = HtmlReportWriter.CreateTableScript(schema, table, destinationInfo, destFKs);
                 }
                 else
                 {
@@ -592,10 +590,9 @@ public class DbComparer : DbObjectHandler
 
             if (makeChange == ComparerAction.ApplyChanges)
             {
-                (_, destinationNewInfo) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, schema, table);
+                (_, destinationNewInfo, _, var destinationNewFKs) = TableFetcher.GetTableInfo(sourceServer.connectionString, destinationServer.connectionString, schema, table);
                 string newPath = Path.Combine(schemaFolder, newFile);
-                var newTableScript = HtmlReportWriter.CreateTableScript(schema, table, destinationNewInfo);
-                HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationNewInfo, null), returnPage, newTableScript);
+                var newTableScript = HtmlReportWriter.CreateTableScript(schema, table, destinationNewInfo, destFKs); HtmlReportWriter.WriteBodyHtml(newPath, $"New {destinationServer.name} Table", HtmlReportWriter.PrintTableInfo(destinationNewInfo, null), returnPage, newTableScript);
                 wasAltered = true;
             }
 
@@ -609,6 +606,8 @@ public class DbComparer : DbObjectHandler
                 IsEqual = areEqual,
                 SourceTableInfo = sourceInfo,
                 DestinationTableInfo = destinationInfo,
+                SourceForeignKeys = sourceFKs,       
+                DestinationForeignKeys = destFKs,     
                 SourceFile = isVisible ? Path.Combine(safeSchema, sourceFile) : null,
                 DestinationFile = isVisible ? Path.Combine(safeSchema, destinationFile) : null,
                 DifferencesFile = isDifferencesVisible ? Path.Combine(safeSchema, differencesFile) : null,
