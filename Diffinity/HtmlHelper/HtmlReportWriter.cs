@@ -267,7 +267,7 @@ public static class HtmlReportWriter
             color: #888; 
             border: none;
             font-size: 13px; 
-            padding: 1px 1px; 
+            padding: 2px 4px; 
             border-radius: 3px;
             cursor: pointer;
             vertical-align: middle;
