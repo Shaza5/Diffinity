@@ -18,6 +18,7 @@ namespace Diffinity.HtmlHelper;
 
 public static class HtmlReportWriter
 {
+    private static readonly object _colorizerLock = new object();
     private const string CopyIcon = @"<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""currentColor"" aria-hidden=""true"" class=""icon-copy""><path d=""M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z""/></svg>";
     private const string CheckIcon = @"<svg viewBox=""0 0 24 24"" width=""20"" height=""20"" fill=""currentColor"" aria-hidden=""true"" class=""icon-check""><path d=""M9 16.2l-3.5-3.5 1.4-1.4L9 13.4l7.1-7.1 1.4 1.4L9 16.2z""/></svg>";
     private const string IndexTemplate = @"
@@ -284,7 +285,6 @@ public static class HtmlReportWriter
     <tr>
         <th></th>
         <th>{MetaData} Name</th>
-        <th></th>
         <th> <label class=""hdr""><input type=""checkbox"" id= {selectAllSrc}><span>{source} Original</span></label> </th>
         <th> <label class=""hdr""><input type=""checkbox"" id= {selectAllDst}><span>{destination} Original</span></label> </th>
         <th>Changes</th>
@@ -826,7 +826,6 @@ public static class HtmlReportWriter
                     <th>{result.Type} Name</th>
                     <th></th>
                     <th></th>
-                    <th></th>
                     <th class=""done-col""></th>
                 </tr>");
 
@@ -846,8 +845,7 @@ public static class HtmlReportWriter
 
                 newTable.Append($@"<tr data-key=""new|{result.Type}|{item.schema}.{item.Name}"">
                         <td>{newCount}</td>
-                        <td  style=""width: 30%;text-align: left;"">{item.schema}.{item.Name}</td>
-                        <td>{copyNameButton}</td>
+                        <td> {item.schema}.{item.Name}{copyNameButton}</td>
                                 <td>{sourceLink}</td>
                                 <td>{copyButton}</td>
                                 <td class=""done-col"">
@@ -900,7 +898,6 @@ public static class HtmlReportWriter
                     <th>{result.Type} Name</th>
                     <th></th>
                     <th></th>
-                    <th></th>
                     <th class=""done-col""></th>
                 </tr>");
 
@@ -919,8 +916,7 @@ public static class HtmlReportWriter
 
                 unchangedTable.Append($@"<tr data-key=""Unchanged|{result.Type}|{item.schema}.{item.Name}"">
                                 <td>{newCount}</td>
-                                <td style=""width: 30%;text-align: left;"">{item.schema}.{item.Name}</td>
-                                <td>{copyNameButton}</td>
+                                <td>{item.schema}.{item.Name} {copyNameButton}</td>
                                 <td>{sourceLink}</td>
                                 <td>{copyButton}</td>
                                 <td class=""done-col"">
@@ -1003,11 +999,10 @@ public static class HtmlReportWriter
             string differencesColumn = item.DifferencesFile != null ? $@"<a href=""{item.DifferencesFile}"">View</a>" : "—";
             string newColumn = item.NewFile != null ? $@"<a href=""{item.NewFile}"">View</a>" : "—";
 
-          
-                html.Append($@"<tr data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
+
+            html.Append($@"<tr data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
                 <td>{Number}</td>
-                <td >{item.schema}.{item.Name}</td>
-                <td> {copyNameButton}</td>
+                <td >{item.schema}.{item.Name} {copyNameButton}</td>
                 <td>{sourceColumn}</td>
                 <td>{destinationColumn}</td>
                 <td>{differencesColumn}</td>
@@ -1017,8 +1012,8 @@ public static class HtmlReportWriter
                            data-key=""changed|{result.Type}|{item.schema}.{item.Name}"">
                 </td>
                 </tr>");
-                Number++;
-            
+            Number++;
+
 
         }
         html.AppendLine(
@@ -1160,8 +1155,7 @@ public static class HtmlReportWriter
                 html.Append($@"
           <tr data-key=""tenant|{item.Type}|{item.schema}.{item.Name}"">
             <td>{tsNum}</td>
-            <td style=""width: 30%;text-align: left; "">{item.schema}.{item.Name}</td>
-            <td> {copyNameButton}</td>
+            <td>{item.schema}.{item.Name}  {copyNameButton}</td>
             <td>{sourceColumn}</td>
             <td>{destinationColumn}</td>
             <td class=""done-col"">
@@ -2003,9 +1997,17 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
     static string HighlightSql(string sqlCode)
     {
         if (sqlCode == null) return null;
-        var colorizer = new CodeColorizer();
-        string coloredCode = colorizer.Colorize(sqlCode, Languages.Sql).Replace(@"<div style=""color:Black;background-color:White;""><pre>", "").Replace("</div>", "");
-        return coloredCode;
+
+        // ColorCode is not thread-safe during language compilation.
+        // We lock here to prevent "Key already added" exceptions in Parallel loops.
+        lock (_colorizerLock)
+        {
+            var colorizer = new CodeColorizer();
+            string coloredCode = colorizer.Colorize(sqlCode, Languages.Sql)
+                .Replace(@"<div style=""color:Black;background-color:White;""><pre>", "")
+                .Replace("</div>", "");
+            return coloredCode;
+        }
     }
     /// <summary>
     /// Write the nav section in the comparison summary pages
