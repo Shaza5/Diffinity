@@ -751,8 +751,8 @@ public static class HtmlReportWriter
             .Any(t => !string.IsNullOrWhiteSpace(t) && t.Count(ch => ch == '/') == 3);
 
         string countsLegend = legendHasUnchanged
-            ? "Counts are (new/unchanged/changed/tenant)"
-            : "Counts are (new/changed/tenant)";
+            ? "Counts are (new / unchanged / changed / tenant)"
+            : "Counts are (new / changed / tenant)";
 
         // Replace placeholders in the index template
         html.Append(
@@ -1479,10 +1479,6 @@ public static class HtmlReportWriter
         html.AppendLine($@"
         <body>
         <h1>{title} for {objectName}</h1>
-        <label style='font-size: 1rem; font-weight: 600; color: #36454F; display: block; text-align: center;'>
-            <input type='checkbox' id='hideCommonFields' checked onchange='toggleCommonFields()' style='margin-right: 8px; vertical-align: middle;'>
-            Hide Common Fields
-        </label>
         <div class='side-by-side'>
             <div class='db-block'>
                 <span class='use'>{sourceName}</span>
@@ -1536,15 +1532,6 @@ public static class HtmlReportWriter
                 destCol = destRemaining.Any() ? destRemaining.Dequeue() : null;
             }
 
-            // Determine if this row represents a common field (no differences)
-            bool isCommon = srcCol != null && destCol != null &&
-                            srcCol.columnType == destCol.columnType &&
-                            srcCol.isNullable == destCol.isNullable &&
-                            srcCol.maxLength == destCol.maxLength &&
-                            srcCol.isPrimaryKey == destCol.isPrimaryKey &&
-                            srcCol.isForeignKey == destCol.isForeignKey;
-            string rowClass = isCommon ? "common-row" : "";
-
             // Build source row
             if (srcCol != null)
             {
@@ -1560,7 +1547,7 @@ public static class HtmlReportWriter
                 string fkCss = destCol != null && srcCol.isForeignKey != destCol.isForeignKey ? "difference" : "";
 
                 html.AppendLine($@"
-            <tr class='{rowClass}'>
+            <tr>
                 <td class='{nameCss}'>{srcCol.columnName}</td>
                 <td class='{typeCss}'>{srcCol.columnType}</td>
                 <td class='{nullCss}'>{srcCol.isNullable}</td>
@@ -1571,7 +1558,7 @@ public static class HtmlReportWriter
             }
             else
             {
-                html.AppendLine($"<tr class='{rowClass}'><td colspan='6' class='missing'>&nbsp;</td></tr>");
+                html.AppendLine("<tr><td colspan='6' class='missing'>&nbsp;</td></tr>");
             }
 
             // Build destination row
@@ -1589,7 +1576,7 @@ public static class HtmlReportWriter
                 string fkCss = srcCol != null && destCol.isForeignKey != srcCol.isForeignKey ? "difference" : "";
 
                 destTableHtml.AppendLine($@"
-            <tr class='{rowClass}'>
+            <tr>
                 <td class='{nameCss}'>{destCol.columnName}</td>
                 <td class='{typeCss}'>{destCol.columnType}</td>
                 <td class='{nullCss}'>{destCol.isNullable}</td>
@@ -1600,7 +1587,7 @@ public static class HtmlReportWriter
             }
             else
             {
-                destTableHtml.AppendLine($"<tr class='{rowClass}'><td colspan='6' class='missing'>&nbsp;</td></tr>");
+                destTableHtml.AppendLine("<tr><td colspan='6' class='missing'>&nbsp;</td></tr>");
             }
         }
 
@@ -1617,27 +1604,9 @@ public static class HtmlReportWriter
         <span id='destScript' style='display:none;'>{destAlterScript}</span>
         
         <a href='{returnPage}' class='return-btn'>Return to Summary</a>
-
-        <script>
-                function toggleCommonFields() {{
-            const checkbox = document.getElementById('hideCommonFields');
-            const commonRows = document.querySelectorAll('.common-row');
         
-                commonRows.forEach(row => {{
-                    if (checkbox.checked) {{
-                        row.style.display = 'none';
-                    }} else {{
-                        row.style.display = '';
-                    }}
-                }});
-            }}
-    
-            // Initialize on page load
-            document.addEventListener('DOMContentLoaded', function() {{
-                toggleCommonFields();
-            }});
-
-                function copyTableScript(scriptId) {{
+        <script>
+        function copyTableScript(scriptId) {{
             const scriptElement = document.getElementById(scriptId);
             const text = scriptElement.textContent.trim();
             
