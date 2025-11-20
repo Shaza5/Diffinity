@@ -1002,11 +1002,11 @@ public static class HtmlReportWriter
             string copyNameButton = $@"<button class=""name-copy-btn"" onclick=""copyPane(this)"">{SmallCopyIcon}{SmallCheckIcon}</button><span class=""copy-target"" style=""display:none;"">{item.schema}.{item.Name}</span>";
             if (item.Type == "Table")
             {
-                // Source copy button gets script to alter the SOURCE table (make it match destination)
-                sourceCopy = CreateAlterTableScript(item.schema, item.Name, item.DestinationTableInfo, item.SourceTableInfo);
+                // Source copy button gets script to alter the SOURCE table (make it match destination)
+                sourceCopy = CreateAlterTableScript(item.schema, item.Name, item.SourceTableInfo, item.DestinationTableInfo, item.SourceForeignKeys, item.DestinationForeignKeys);
 
-                // Destination copy button gets script to alter the DESTINATION table (make it match source)
-                destCopy = CreateAlterTableScript(item.schema, item.Name, item.SourceTableInfo, item.DestinationTableInfo);
+                // Destination copy button gets script to alter the DESTINATION table (make it match source)
+                destCopy = CreateAlterTableScript(item.schema, item.Name, item.DestinationTableInfo, item.SourceTableInfo, item.DestinationForeignKeys, item.SourceForeignKeys);
             }
 
             // Prepare file links
@@ -1161,8 +1161,8 @@ public static class HtmlReportWriter
 
                 if (item.Type == "Table")
                 {
-                    sourceCopy = CreateAlterTableScript(item.schema, item.Name, item.SourceTableInfo, item.DestinationTableInfo);
-                    destCopy = CreateAlterTableScript(item.schema, item.Name, item.DestinationTableInfo, item.SourceTableInfo);
+                    sourceCopy = CreateAlterTableScript(item.schema, item.Name, item.DestinationTableInfo, item.SourceTableInfo, item.DestinationForeignKeys, item.SourceForeignKeys);
+                    destCopy = CreateAlterTableScript(item.schema, item.Name, item.SourceTableInfo, item.DestinationTableInfo, item.SourceForeignKeys, item.DestinationForeignKeys);
                 }
 
                 string copyNameButton = $@"<button class=""name-copy-btn"" onclick=""copyPane(this)"">{SmallCopyIcon}{SmallCheckIcon}</button><span class=""copy-target"" style=""display:none;"">{item.schema}.{item.Name}</span>"; string sourceColumn = !string.IsNullOrWhiteSpace(item.SourceFile) ? $@"<label class='pick'>
@@ -1476,7 +1476,7 @@ public static class HtmlReportWriter
     /// <summary>
     /// Prints table column details with to show the differences 
     /// </summary>
-    public static void TableDifferencesWriter(string filePath, string sourceName, string destinationName, List<tableDto> sourceTable, List<tableDto> destinationTable, List<string> differences, string title, string objectName, string returnPage)
+    public static void TableDifferencesWriter(string filePath, string sourceName, string destinationName,List<tableDto> sourceTable, List<tableDto> destinationTable, List<string> differences,string title, string objectName, string returnPage,List<ForeignKeyDto> sourceFKs = null, List<ForeignKeyDto> destFKs = null)
     {
         var html = new StringBuilder();
         html.AppendLine(BodyTemplate.Replace("{title}", title));
@@ -1486,8 +1486,8 @@ public static class HtmlReportWriter
         string schema = parts.Length > 1 ? parts[0] : "dbo";
         string table = parts.Length > 1 ? parts[1] : objectName;
 
-        string sourceAlterScript = CreateAlterTableScript(schema, table, destinationTable, sourceTable);
-        string destAlterScript = CreateAlterTableScript(schema, table, sourceTable, destinationTable);
+        string sourceAlterScript = CreateAlterTableScript(schema, table, sourceTable, destinationTable, sourceFKs, destFKs);
+        string destAlterScript = CreateAlterTableScript(schema, table, destinationTable, sourceTable, destFKs, sourceFKs);
 
         html.AppendLine($@"
     <body>
@@ -1563,7 +1563,7 @@ public static class HtmlReportWriter
                 if (destCol != null)
                 {
                     // Both exist: Alter Dest to match Source
-                    colAlter = GenerateColumnAlterScript(schema, table, destCol, srcCol, destinationTable, sourceTable);
+                    colAlter = GenerateColumnAlterScript(schema, table, destCol, srcCol, destinationTable, sourceTable, destFKs, sourceFKs);
                 }
                 else
                 {
@@ -1591,7 +1591,32 @@ ALTER TABLE [{schema}].[{table}] ADD [{srcCol.columnName}] {srcCol.columnType}{l
             }
             else
             {
-                html.AppendLine("<tr><td></td><td colspan='6' class='missing'>&nbsp;</td></tr>");
+
+                if (destCol != null)
+                {
+                    var sbDrop = new StringBuilder();
+                    var colFKs = destFKs?.Where(fk => fk.ColumnName.Equals(destCol.columnName, StringComparison.OrdinalIgnoreCase)).ToList();
+                    if (colFKs != null && colFKs.Any())
+                    {
+                        var constraintNames = colFKs.Select(fk => fk.ConstraintName).Distinct();
+                        foreach (var cName in constraintNames)
+                        {
+                            sbDrop.AppendLine($"ALTER TABLE [{schema}].[{table}] DROP CONSTRAINT [{cName}];");
+                        }
+                    }
+
+                    sbDrop.AppendLine($"-- Drop column from [{schema}].[{table}]");
+                    sbDrop.AppendLine($"ALTER TABLE [{schema}].[{table}] DROP COLUMN [{destCol.columnName}];");
+
+                    string copyBtn = $@"<button class='copy-btn-small' onclick='copyColumnScript(""src-col-{rowNum}"")'>{CopyIcon}{CheckIcon}</button>
+        <span id='src-col-{rowNum}' style='display:none;'>{sbDrop}</span>";
+
+                    html.AppendLine($@"<tr><td style='text-align:center; width:50px;'>{copyBtn}</td><td colspan='6' class='missing'>&nbsp;</td></tr>");
+                }
+                else
+                {
+                    html.AppendLine("<tr><td></td><td colspan='6' class='missing'>&nbsp;</td></tr>");
+                }
             }
 
             if (destCol != null)
@@ -1612,7 +1637,7 @@ ALTER TABLE [{schema}].[{table}] ADD [{srcCol.columnName}] {srcCol.columnType}{l
                 if (srcCol != null)
                 {
                     // Both exist: Alter Source to match Dest
-                    colAlter = GenerateColumnAlterScript(schema, table, srcCol, destCol, sourceTable, destinationTable);
+                    colAlter = GenerateColumnAlterScript(schema, table, srcCol, destCol, sourceTable, destinationTable, sourceFKs, destFKs);
                 }
                 else
                 {
@@ -1832,7 +1857,7 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
         return sb.ToString();
     }
 
-    public static string CreateAlterTableScript(string schema, string table, List<tableDto> sourceColumns, List<tableDto> targetColumns)
+    public static string CreateAlterTableScript(string schema, string table, List<tableDto> sourceColumns, List<tableDto> targetColumns, List<ForeignKeyDto> sourceFKs = null, List<ForeignKeyDto> targetFKs = null)
     {
         if (sourceColumns == null || targetColumns == null)
             return $"-- Cannot generate ALTER script for [{schema}].[{table}]";
@@ -1855,33 +1880,44 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
             .Select(c => c.columnName.ToLower())
             .ToHashSet();
 
+        // Detect Foreign Key differences
+        var sourceFKDict = (sourceFKs ?? new List<ForeignKeyDto>())
+            .GroupBy(fk => fk.ConstraintName)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var targetFKDict = (targetFKs ?? new List<ForeignKeyDto>())
+            .GroupBy(fk => fk.ConstraintName)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
         var toDrop = new List<tableDto>();
         var toAdd = new List<tableDto>();
         var toModify = new List<(tableDto source, tableDto target)>();
+        // Track FKs dropped in Step 1 so we don't drop them again in Step 6
+        var alreadyDroppedFKs = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        // Find columns to DROP (exist in target but not in source)
-        foreach (var targetCol in targetColumns)
+        // Find columns to DROP (exist in source but not in target)
+        foreach (var sourceCol in sourceColumns)
         {
-            if (!sourceDict.ContainsKey(targetCol.columnName.ToLower()))
+            if (!targetDict.ContainsKey(sourceCol.columnName.ToLower()))
             {
-                toDrop.Add(targetCol);
+                toDrop.Add(sourceCol);
             }
         }
 
         // Find columns to ADD or MODIFY
-        foreach (var sourceCol in sourceColumns)
+        foreach (var targetCol in targetColumns)
         {
-            string key = sourceCol.columnName.ToLower();
+            string key = targetCol.columnName.ToLower();
 
-            if (!targetDict.ContainsKey(key))
+            if (!sourceDict.ContainsKey(key))
             {
-                // Column exists in source but not in target - ADD it
-                toAdd.Add(sourceCol);
+                // Column exists in target but not in source - ADD it
+                toAdd.Add(targetCol);
             }
             else
             {
                 // Column exists in both - check if modified
-                var targetCol = targetDict[key];
+                var sourceCol = sourceDict[key];
 
                 bool isModified =
                     !string.Equals(sourceCol.columnType, targetCol.columnType, StringComparison.OrdinalIgnoreCase) ||
@@ -1897,6 +1933,30 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
 
         bool hasChanges = false;
 
+        // DROP Foreign Keys that reference columns we're about to drop or modify
+        if (sourceFKs != null && sourceFKs.Any())
+        {
+            var columnsBeingModified = toDrop.Select(c => c.columnName.ToLower())
+                .Union(toModify.Select(m => m.source.columnName.ToLower()))
+                .ToHashSet();
+
+            var fksToDropFirst = sourceFKs
+                .Where(fk => columnsBeingModified.Contains(fk.ColumnName.ToLower()))
+                .Select(fk => fk.ConstraintName)
+                .Distinct();
+
+            foreach (var fkName in fksToDropFirst)
+            {
+                sb.AppendLine($"-- Drop FK constraint that references column being modified");
+                sb.AppendLine($"ALTER TABLE [{schema}].[{table}] DROP CONSTRAINT [{fkName}];");
+                alreadyDroppedFKs.Add(fkName); 
+                hasChanges = true;
+            }
+
+            if (fksToDropFirst.Any())
+                sb.AppendLine();
+        }
+
         // DROP columns
         if (toDrop.Any())
         {
@@ -1911,19 +1971,19 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
         // Handle Primary Key changes (Drop old, Add new)
         if (!sourcePKs.SetEquals(targetPKs))
         {
-            // If the target had a PK, drop it (assumes PK name is PK_{table})
-            if (targetPKs.Any())
+            // If source has a PK, drop it
+            if (sourcePKs.Any())
             {
                 sb.AppendLine($"-- Dropping old Primary Key");
                 sb.AppendLine($"ALTER TABLE [{schema}].[{table}] DROP CONSTRAINT [PK_{table}];");
                 hasChanges = true;
             }
 
-            // If the source has a PK, add it
-            if (sourcePKs.Any())
+            // If target has a PK, add it
+            if (targetPKs.Any())
             {
                 sb.AppendLine($"-- Adding new Primary Key");
-                var pkCols = sourceColumns
+                var pkCols = targetColumns
                     .Where(c => "YES".Equals(c.isPrimaryKey, StringComparison.OrdinalIgnoreCase))
                     .Select(x => $"[{x.columnName}]");
                 sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ADD CONSTRAINT [PK_{table}] PRIMARY KEY ({string.Join(", ", pkCols)});");
@@ -1937,9 +1997,9 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
         {
             foreach (var (sourceCol, targetCol) in toModify)
             {
-                var len = NormalizeLen(sourceCol.columnType, sourceCol.maxLength);
-                var nullability = (sourceCol.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
-                sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ALTER COLUMN [{sourceCol.columnName}] {sourceCol.columnType}{len} {nullability};");
+                var len = NormalizeLen(targetCol.columnType, targetCol.maxLength);
+                var nullability = (targetCol.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
+                sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ALTER COLUMN [{targetCol.columnName}] {targetCol.columnType}{len} {nullability};");
                 hasChanges = true;
             }
             sb.AppendLine();
@@ -1955,7 +2015,69 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
                 sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ADD [{col.columnName}] {col.columnType}{len} {nullability};");
                 hasChanges = true;
             }
+            sb.AppendLine();
         }
+
+        // Handle Foreign Key changes
+        // Drop FKs that exist in source but not in target (or have changed)
+        var fksToDrop = sourceFKDict.Keys.Except(targetFKDict.Keys).ToList();
+
+        // Also drop FKs that exist in both but have different definitions
+        foreach (var fkName in sourceFKDict.Keys.Intersect(targetFKDict.Keys))
+        {
+            var sourceFKList = sourceFKDict[fkName];
+            var targetFKList = targetFKDict[fkName];
+
+            // Compare FK definitions
+            bool fkChanged = !AreForeignKeysEqual(sourceFKList, targetFKList);
+            if (fkChanged && !fksToDrop.Contains(fkName))
+            {
+                fksToDrop.Add(fkName);
+            }
+        }
+
+        foreach (var fkName in fksToDrop)
+        {
+            if (alreadyDroppedFKs.Contains(fkName)) continue; 
+
+            sb.AppendLine($"-- Drop foreign key constraint");
+            sb.AppendLine($"ALTER TABLE [{schema}].[{table}] DROP CONSTRAINT [{fkName}];");
+            hasChanges = true;
+        }
+
+
+        if (fksToDrop.Any())
+            sb.AppendLine();
+
+        // Add FKs that exist in target but not in source (or were modified)
+        var fksToAdd = targetFKDict.Keys.Except(sourceFKDict.Keys).ToList();
+
+        // Also add back FKs that were dropped due to changes
+        foreach (var fkName in sourceFKDict.Keys.Intersect(targetFKDict.Keys))
+        {
+            if (fksToDrop.Contains(fkName) && !fksToAdd.Contains(fkName))
+            {
+                fksToAdd.Add(fkName);
+            }
+        }
+
+        foreach (var fkName in fksToAdd)
+        {
+            if (!targetFKDict.ContainsKey(fkName)) continue;
+
+            var fkList = targetFKDict[fkName];
+            var fkColumns = string.Join(", ", fkList.Select(fk => $"[{fk.ColumnName}]"));
+            var refColumns = string.Join(", ", fkList.Select(fk => $"[{fk.ReferencedColumn}]"));
+            var refSchema = fkList.First().ReferencedSchema;
+            var refTable = fkList.First().ReferencedTable;
+
+            sb.AppendLine($"-- Add foreign key constraint");
+            sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ADD CONSTRAINT [{fkName}] FOREIGN KEY ({fkColumns}) REFERENCES [{refSchema}].[{refTable}]({refColumns});");
+            hasChanges = true;
+        }
+
+        if (fksToAdd.Any())
+            sb.AppendLine();
 
         if (!hasChanges)
         {
@@ -1965,11 +2087,32 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
         return sb.ToString();
     }
 
+    // Helper method to compare two FK definitions
+    private static bool AreForeignKeysEqual(List<ForeignKeyDto> fk1, List<ForeignKeyDto> fk2)
+    {
+        if (fk1.Count != fk2.Count) return false;
 
+        // Sort both lists by column name for comparison
+        var sorted1 = fk1.OrderBy(f => f.ColumnName).ToList();
+        var sorted2 = fk2.OrderBy(f => f.ColumnName).ToList();
+
+        for (int i = 0; i < sorted1.Count; i++)
+        {
+            if (!string.Equals(sorted1[i].ColumnName, sorted2[i].ColumnName, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(sorted1[i].ReferencedSchema, sorted2[i].ReferencedSchema, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(sorted1[i].ReferencedTable, sorted2[i].ReferencedTable, StringComparison.OrdinalIgnoreCase) ||
+                !string.Equals(sorted1[i].ReferencedColumn, sorted2[i].ReferencedColumn, StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
     /// <summary>
     /// Generates an ALTER statement for a single column
     /// </summary>
-    private static string GenerateColumnAlterScript(string schema, string table, tableDto currentCol, tableDto targetCol, List<tableDto> currentTable, List<tableDto> targetTable)
+    private static string GenerateColumnAlterScript(string schema, string table, tableDto currentCol, tableDto targetCol, List<tableDto> currentTable, List<tableDto> targetTable, List<ForeignKeyDto> currentFKs = null, List<ForeignKeyDto> targetFKs = null)
     {
         if (currentCol == null) return "";
 
@@ -1979,9 +2122,25 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
         // Check if column exists in target
         bool existsInTarget = targetTable?.Any(c => c.columnName.Equals(currentCol.columnName, StringComparison.OrdinalIgnoreCase)) == true;
 
+        // Check if this column has any FK constraints
+        var columnFKs = currentFKs?.Where(fk => fk.ColumnName.Equals(currentCol.columnName, StringComparison.OrdinalIgnoreCase)).ToList();
+        bool hasFKConstraint = columnFKs != null && columnFKs.Any();
+
         if (!existsInTarget)
         {
             // Column exists in current but not in target: DROP COLUMN
+
+            // First drop any FK constraints on this column
+            if (hasFKConstraint)
+            {
+                var constraintNames = columnFKs.Select(fk => fk.ConstraintName).Distinct();
+                foreach (var constraintName in constraintNames)
+                {
+                    sb.AppendLine($"-- Drop FK constraint before dropping column");
+                    sb.AppendLine($"ALTER TABLE [{schema}].[{table}] DROP CONSTRAINT [{constraintName}];");
+                }
+            }
+
             sb.AppendLine($"-- Drop column from [{schema}].[{table}]");
             sb.AppendLine($"ALTER TABLE [{schema}].[{table}] DROP COLUMN [{currentCol.columnName}];");
         }
@@ -1995,15 +2154,45 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
 
             if (isModified)
             {
+                // Drop FK constraints before altering the column
+                if (hasFKConstraint)
+                {
+                    var constraintNames = columnFKs.Select(fk => fk.ConstraintName).Distinct();
+                    foreach (var constraintName in constraintNames)
+                    {
+                        sb.AppendLine($"-- Drop FK constraint before altering column");
+                        sb.AppendLine($"ALTER TABLE [{schema}].[{table}] DROP CONSTRAINT [{constraintName}];");
+                    }
+                }
+
                 // ALTER COLUMN to match target
                 var len = NormalizeLen(targetCol.columnType, targetCol.maxLength);
                 var nullability = (targetCol.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
                 sb.AppendLine($"-- Alter column [{currentCol.columnName}] in [{schema}].[{table}]");
                 sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ALTER COLUMN [{targetCol.columnName}] {targetCol.columnType}{len} {nullability};");
+
+                // Re-add FK constraints if they should exist in target
+                var targetColumnFKs = targetFKs?.Where(fk => fk.ColumnName.Equals(targetCol.columnName, StringComparison.OrdinalIgnoreCase))
+                    .GroupBy(fk => fk.ConstraintName);
+
+                if (targetColumnFKs != null && targetColumnFKs.Any())
+                {
+                    foreach (var fkGroup in targetColumnFKs)
+                    {
+                        var fkList = fkGroup.ToList();
+                        var fkColumns = string.Join(", ", fkList.Select(fk => $"[{fk.ColumnName}]"));
+                        var refColumns = string.Join(", ", fkList.Select(fk => $"[{fk.ReferencedColumn}]"));
+                        var refSchema = fkList.First().ReferencedSchema;
+                        var refTable = fkList.First().ReferencedTable;
+
+                        sb.AppendLine($"-- Re-add FK constraint after altering column");
+                        sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ADD CONSTRAINT [{fkGroup.Key}] FOREIGN KEY ({fkColumns}) REFERENCES [{refSchema}].[{refTable}]({refColumns});");
+                    }
+                }
             }
         }
 
-        // Check if this column exists in current but not in target: ADD COLUMN
+        // Check if this column exists in target but not in current: ADD COLUMN
         bool existsInCurrent = currentTable?.Any(c => c.columnName.Equals(currentCol.columnName, StringComparison.OrdinalIgnoreCase)) == true;
         if (existsInTarget && !existsInCurrent)
         {
@@ -2012,6 +2201,25 @@ ALTER TABLE [{schema}].[{table}] DROP COLUMN [{srcCol.columnName}];";
             var nullability = (currentCol.isNullable?.Equals("YES", StringComparison.OrdinalIgnoreCase) == true) ? "NULL" : "NOT NULL";
             sb.AppendLine($"-- Add column to [{schema}].[{table}]");
             sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ADD [{currentCol.columnName}] {currentCol.columnType}{len} {nullability};");
+
+            // Add FK constraints if they should exist
+            var targetColumnFKs = targetFKs?.Where(fk => fk.ColumnName.Equals(currentCol.columnName, StringComparison.OrdinalIgnoreCase))
+                .GroupBy(fk => fk.ConstraintName);
+
+            if (targetColumnFKs != null && targetColumnFKs.Any())
+            {
+                foreach (var fkGroup in targetColumnFKs)
+                {
+                    var fkList = fkGroup.ToList();
+                    var fkColumns = string.Join(", ", fkList.Select(fk => $"[{fk.ColumnName}]"));
+                    var refColumns = string.Join(", ", fkList.Select(fk => $"[{fk.ReferencedColumn}]"));
+                    var refSchema = fkList.First().ReferencedSchema;
+                    var refTable = fkList.First().ReferencedTable;
+
+                    sb.AppendLine($"-- Add FK constraint for new column");
+                    sb.AppendLine($"ALTER TABLE [{schema}].[{table}] ADD CONSTRAINT [{fkGroup.Key}] FOREIGN KEY ({fkColumns}) REFERENCES [{refSchema}].[{refTable}]({refColumns});");
+                }
+            }
         }
 
         return sb.ToString();

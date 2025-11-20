@@ -557,8 +557,8 @@ public class DbComparer : DbObjectHandler
                 else
                 {
                     // Changed table - use ALTER scripts
-                    sourceTableScript = HtmlReportWriter.CreateAlterTableScript(schema, table, destinationInfo, sourceInfo);
-                    destTableScript = HtmlReportWriter.CreateAlterTableScript(schema, table, sourceInfo, destinationInfo);
+                    sourceTableScript = HtmlReportWriter.CreateAlterTableScript(schema, table, destinationInfo, sourceInfo, destFKs, sourceFKs);
+                    destTableScript = HtmlReportWriter.CreateAlterTableScript(schema, table, sourceInfo, destinationInfo, sourceFKs, destFKs);
                 }
 
                 HtmlReportWriter.WriteBodyHtml(sourcePath, $"{sourceServer.name} Table", HtmlReportWriter.PrintTableInfo(sourceInfo, allDifferences), returnPage, sourceTableScript);
@@ -576,7 +576,9 @@ public class DbComparer : DbObjectHandler
                         allDifferences,
                         "Differences",
                         $"{schema}.{table}",
-                        returnPage
+                        returnPage,
+                        sourceFKs,
+                        destFKs
                     );
                     isDifferencesVisible = true;
                 }
